@@ -1,0 +1,35 @@
+# clasp: menyimpan ID project Apps Script lokal
+.clasp.json
+
+# Environment dan secret lokal
+.env
+.env.*
+!.env.example
+secrets.*
+*.secret
+
+# OAuth / service-account credentials dan token
+credentials.json
+credential*.json
+client_secret*.json
+service-account*.json
+oauth*.json
+token*.json
+*.pem
+*.key
+*.p12
+
+# Data/ekspor pribadi
+data/
+exports/
+backups/
+attachments/
+*.csv
+*.xlsx
+
+# Log dan file sistem/editor
+*.log
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

@@ -28,10 +28,13 @@ function processTransaction(e) {
     // 1. Ambil data dari Google Form
     const form = getTransactionFormResponse(e);
 
-    // 2. Parsing transaksi
-    const transaction = parseTransaction(form);
+    // 2. Normalisasi input suara
+    const normalizedForm = normalizeTransactionForm(form);
 
-    // 3. Simpan transaksi
+    // 3. Parsing transaksi
+    const transaction = parseTransaction(normalizedForm);
+
+    // 4. Simpan transaksi
     const transactionRow = saveTransaction(transaction);
 
     updateWalletBalances();
