@@ -32,13 +32,17 @@ function processTransaction(e) {
     const normalizedForm = normalizeTransactionForm(form);
 
     // 3. Parsing setiap transaksi pada satu respons form
+    const sourceInputs = splitTransactionInput(normalizedForm.sourceInput);
     const transactions = splitTransactionInput(normalizedForm.input)
-      .map(input => parseTransaction(Object.assign({}, normalizedForm, {
-        input: input
+      .map((input, index) => parseTransaction(Object.assign({}, normalizedForm, {
+        input: input,
+        sourceInput: sourceInputs[index] || input
       })));
 
     // 4. Simpan seluruh transaksi
     const transactionRows = transactions.map(saveTransaction);
+
+    syncInventoryPurchases(transactions);
 
     updateWalletBalances();
 

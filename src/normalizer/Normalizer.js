@@ -16,6 +16,7 @@
 function normalizeTransactionForm(form) {
 
   return Object.assign({}, form, {
+    sourceInput: form.input,
     input: normalizeTransactionInput(form.input)
   });
 

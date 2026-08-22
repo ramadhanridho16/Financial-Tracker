@@ -39,6 +39,27 @@ const CONFIG = Object.freeze({
 
   },
 
+  HOME_INVENTORY: {
+    SPREADSHEET_ID: "1G-z-Qo2CfYcO36NgSh9K1-fzQkL7gHtH6m7QYSqEStKJo_WlGZZeKYyq",
+    SHEETS: {
+      PRODUCT_MASTER: "Product_Master",
+      INVENTORY: "Inventory",
+      TRANSACTION: "Transaction"
+    },
+    PURCHASE_KEYWORDS: ["beli", "membeli", "tambah", "tambahkan", "isi", "isi ulang", "stok", "restock", "masuk", "simpan"],
+    HEADERS: {
+      PRODUCT_ID: ["Product ID", "ProductID"],
+      PRODUCT_NAME: ["Product Name", "Nama Produk"],
+      PRODUCT_UNIT: ["Unit", "Satuan"],
+      PRODUCT_ACTIVE: ["Active", "Aktif"],
+      STOCK: ["Current Stock", "Stock", "Stok", "Jumlah"],
+      TYPE: ["Type", "Jenis"],
+      QUANTITY: ["Quantity", "Qty", "Jumlah"],
+      DATE: ["Date", "Tanggal"],
+      NOTE: ["Note", "Notes", "Catatan"]
+    }
+  },
+
   FORM_FIELDS: {
 
     TRANSACTION: {

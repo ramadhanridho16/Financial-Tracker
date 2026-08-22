@@ -34,6 +34,8 @@ function parseTransaction(form){
 
         transactionId : "",
 
+        sourceInput : form.sourceInput || form.input,
+
         timestamp : form.timestamp,
 
         transactionType : extractTransactionType(dictionary,text),
