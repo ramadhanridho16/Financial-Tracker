@@ -16,8 +16,22 @@
 function normalizeTransactionForm(form) {
 
   return Object.assign({}, form, {
-    input: normalizeSpeechInput(form.input)
+    input: normalizeTransactionInput(form.input)
   });
+
+}
+
+/**
+ * Menormalisasi setiap transaksi dalam input gabungan secara terpisah.
+ *
+ * @param {String} input
+ * @returns {String}
+ */
+function normalizeTransactionInput(input) {
+
+  return splitTransactionInput(input)
+    .map(normalizeSpeechInput)
+    .join(", ");
 
 }
 

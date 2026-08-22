@@ -70,6 +70,70 @@ function parseTransaction(form){
 
 }
 
+/**
+ * Memecah satu input menjadi beberapa input transaksi.
+ * Koma di antara dua angka dipertahankan sebagai pemisah desimal nominal.
+ *
+ * @param {String} input
+ * @returns {Array<String>}
+ */
+function splitTransactionInput(input){
+
+    const text = String(input || "").trim();
+    const transactions = [];
+    let current = "";
+
+    for(let index = 0; index < text.length; index++){
+
+        const character = text[index];
+
+        if(character === "," && !isAmountDecimalSeparator(text, index)){
+            addTransactionInput(transactions, current);
+            current = "";
+            continue;
+        }
+
+        current += character;
+
+    }
+
+    addTransactionInput(transactions, current);
+
+    return transactions;
+
+}
+
+/**
+ * Mengecek apakah koma adalah pemisah desimal pada nominal.
+ *
+ * @param {String} text
+ * @param {Number} index
+ * @returns {Boolean}
+ */
+function isAmountDecimalSeparator(text, index){
+
+    return /\d/.test(text[index - 1] || "") &&
+        /\d/.test(text[index + 1] || "");
+
+}
+
+/**
+ * Menambahkan potongan transaksi bila tidak kosong.
+ *
+ * @param {Array<String>} transactions
+ * @param {String} input
+ * @returns {void}
+ */
+function addTransactionInput(transactions, input){
+
+    const value = String(input || "").trim();
+
+    if(value){
+        transactions.push(value);
+    }
+
+}
+
 function extractWallet(text){
 
     return extractWalletMentions(text)[0] || getDefaultWallet() || {

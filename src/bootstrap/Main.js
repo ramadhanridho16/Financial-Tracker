@@ -19,7 +19,7 @@
  * Memproses Financial Transaction Form
  *
  * @param {Object} e
- * @returns {String} TransactionID
+ * @returns {String|Number} Nomor baris transaksi yang tersimpan.
  */
 function processTransaction(e) {
 
@@ -31,13 +31,18 @@ function processTransaction(e) {
     // 2. Normalisasi input suara
     const normalizedForm = normalizeTransactionForm(form);
 
-    // 3. Parsing transaksi
-    const transaction = parseTransaction(normalizedForm);
+    // 3. Parsing setiap transaksi pada satu respons form
+    const transactions = splitTransactionInput(normalizedForm.input)
+      .map(input => parseTransaction(Object.assign({}, normalizedForm, {
+        input: input
+      })));
 
-    // 4. Simpan transaksi
-    const transactionRow = saveTransaction(transaction);
+    // 4. Simpan seluruh transaksi
+    const transactionRows = transactions.map(saveTransaction);
 
     updateWalletBalances();
+
+    const transactionRow = formatTransactionRows(transactionRows);
 
     Logger.log("================================");
     Logger.log("Financial Transaction Success");
@@ -53,6 +58,22 @@ function processTransaction(e) {
     throw error;
 
   }
+
+}
+
+/**
+ * Menyajikan nomor baris transaksi untuk status respons form.
+ *
+ * @param {Array<Number>} transactionRows
+ * @returns {String|Number}
+ */
+function formatTransactionRows(transactionRows) {
+
+  if (transactionRows.length === 1) {
+    return transactionRows[0];
+  }
+
+  return transactionRows.join(", ");
 
 }
 
