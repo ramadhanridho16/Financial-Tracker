@@ -285,9 +285,10 @@ function extractSubCategory(dictionary){
 
 function extractDescription(text, wallets, dictionary){
 
+    const amountText = getTransactionAmountText(text);
     let description = text
         .replace(/^[+-]\s*/, "")
-        .replace(/\b\d+[.,]?\d*\s*(jt|juta|rb|ribu|k)?\b/i, "")
+        .replace(amountText, "")
         .replace(/\s+/g, " ");
 
     wallets.forEach(wallet => {
@@ -324,7 +325,31 @@ function removeWord(text, word){
 
 function extractAmount(text){
 
-    return parseAmount(text);
+    return parseAmount(getTransactionAmountText(text));
+
+}
+
+/**
+ * Mengambil nominal transaksi dari input yang dapat memuat jumlah barang.
+ * Nominal dengan satuan uang diprioritaskan dibanding angka jumlah.
+ *
+ * @param {String} text
+ * @returns {String}
+ */
+function getTransactionAmountText(text){
+
+    const normalizedText = normalizeText(text);
+    const currencyAmounts = normalizedText.match(
+        /\b\d+[.,]?\d*\s*(jt|juta|rb|ribu|k)\b/gi
+    );
+
+    if(currencyAmounts && currencyAmounts.length){
+        return currencyAmounts[currencyAmounts.length - 1];
+    }
+
+    const amount = normalizedText.match(/\b\d+[.,]?\d*\b/i);
+
+    return amount ? amount[0] : "";
 
 }
 

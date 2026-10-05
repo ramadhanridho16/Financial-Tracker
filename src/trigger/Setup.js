@@ -118,6 +118,8 @@ const SHEET_HEADERS = Object.freeze({
     "Parameter",
     "Nilai"
   ],
+  [CONFIG.SHEETS.ARCHIVE_INDEX]: Object.keys(CONFIG.ARCHIVE.INDEX_HEADERS)
+    .map(key => CONFIG.ARCHIVE.INDEX_HEADERS[key]),
   [CONFIG.SHEETS.DASHBOARD]: [
     "Metric",
     "Value"
@@ -135,6 +137,9 @@ function onOpen() {
     .addItem("Siapkan Spreadsheet", "setupSpreadsheet")
     .addItem("Siapkan Otomatisasi", "setupAutomation")
     .addItem("Pasang Trigger Form", "installFormSubmitTrigger")
+    .addItem("Uji koneksi Home Inventory", "testHomeInventoryConnection")
+    .addItem("Backup transaksi bulan lalu", "backupPreviousMonthTransactions")
+    .addItem("Pasang backup Drive bulanan", "installMonthlyBackupTrigger")
     .addItem("Proses Transaksi Berulang", "processRecurringTransactions")
     .addItem("Proses Transaksi Pending", "parsePendingTransactions")
     .addItem("Klasifikasi Transaksi Lama", "classifyExistingTransactions")
@@ -162,8 +167,10 @@ function setupSpreadsheet() {
   ensureTransactionCategoryColumn();
   ensureTransactionTransferColumn();
   ensureParsingStatusColumns();
+  ensureArchiveIndexSheet();
   installFormSubmitTrigger();
   installRecurringTransactionTrigger();
+  installMonthlyBackupTrigger();
 
   return "Setup spreadsheet selesai.";
 
@@ -177,8 +184,10 @@ function setupAutomation() {
   ensureTransactionCategoryColumn();
   ensureTransactionTransferColumn();
   ensureParsingStatusColumns();
+  ensureArchiveIndexSheet();
   installFormSubmitTrigger();
   installRecurringTransactionTrigger();
+  installMonthlyBackupTrigger();
 
   return "Otomatisasi parsing berhasil disiapkan.";
 
@@ -198,6 +207,20 @@ function ensureRecurringTransactionSheet() {
   );
 
   ensureHeader(sheet, SHEET_HEADERS[CONFIG.SHEETS.RECURRING_TRANSACTIONS]);
+
+}
+
+/**
+ * Memastikan sheet indeks arsip tersedia.
+ *
+ * @returns {void}
+ */
+function ensureArchiveIndexSheet() {
+
+  const spreadsheet = getSpreadsheet();
+  const sheet = getOrCreateSheet(spreadsheet, CONFIG.SHEETS.ARCHIVE_INDEX);
+
+  ensureHeader(sheet, SHEET_HEADERS[CONFIG.SHEETS.ARCHIVE_INDEX]);
 
 }
 
@@ -330,6 +353,33 @@ function installRecurringTransactionTrigger() {
     .create();
 
   return "Trigger transaksi berulang berhasil dipasang.";
+
+}
+
+/**
+ * Memasang satu trigger backup transaksi setiap awal bulan.
+ *
+ * @returns {String}
+ */
+function installMonthlyBackupTrigger() {
+
+  const triggers = ScriptApp.getProjectTriggers();
+
+  triggers
+    .filter(trigger =>
+      trigger.getHandlerFunction() === "backupPreviousMonthTransactions" &&
+      trigger.getEventType() === ScriptApp.EventType.CLOCK
+    )
+    .forEach(trigger => ScriptApp.deleteTrigger(trigger));
+
+  ScriptApp
+    .newTrigger("backupPreviousMonthTransactions")
+    .timeBased()
+    .onMonthDay(1)
+    .atHour(3)
+    .create();
+
+  return "Trigger backup Drive bulanan berhasil dipasang.";
 
 }
 

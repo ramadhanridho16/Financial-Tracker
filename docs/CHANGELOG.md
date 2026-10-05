@@ -17,3 +17,9 @@ Parser mendukung transfer.
 1.2
 
 Transaksi berulang mingguan dan bulanan dapat dijadwalkan dan diproses otomatis setiap hari.
+
+----------------
+
+1.3
+
+Dashboard visual analisis konsumsi bulanan per kategori (KPI Card, Ranking Kategori Terboros, Porsi %, Batas Budget, Status Konsumsi, serta Donut Chart interaktif).

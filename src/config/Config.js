@@ -32,6 +32,7 @@ const CONFIG = Object.freeze({
     // CONFIG
     BUDGET: "Budget",
     SETTINGS: "Settings",
+    ARCHIVE_INDEX: "Archive Index",
 
     // OUTPUT
     DASHBOARD: "Dashboard",
@@ -39,8 +40,26 @@ const CONFIG = Object.freeze({
 
   },
 
+  ARCHIVE: {
+    DRIVE_FOLDER_ID: "",
+    DRIVE_FOLDER_NAME: "Financial Tracker Backups",
+    FILE_PREFIX: "transactions",
+    TRANSACTION_DATE_HEADER: "Tanggal",
+    INDEX_HEADERS: {
+      ARCHIVE_ID: "Archive ID",
+      PERIOD: "Period",
+      SOURCE_SHEET: "Source Sheet",
+      ROW_COUNT: "Row Count",
+      FILE_ID: "File ID",
+      FILE_URL: "File URL",
+      BACKED_UP_AT: "Backed Up At",
+      STATUS: "Status"
+    }
+  },
+
   HOME_INVENTORY: {
-    SPREADSHEET_ID: "1G-z-Qo2CfYcO36NgSh9K1-fzQkL7gHtH6m7QYSqEStKJo_WlGZZeKYyq",
+    // Spreadsheet ID diambil dari URL spreadsheet yang digunakan untuk menyimpan data inventaris rumah tangga. Pastikan untuk mengganti ID ini dengan ID spreadsheet Anda sendiri.
+    SPREADSHEET_ID: "1agLINpK-XyW-_hG30XX7-Ce_6KSw90sNK_7IFjscGRU",
     SHEETS: {
       PRODUCT_MASTER: "Product_Master",
       INVENTORY: "Inventory",
@@ -48,14 +67,17 @@ const CONFIG = Object.freeze({
     },
     PURCHASE_KEYWORDS: ["beli", "membeli", "tambah", "tambahkan", "isi", "isi ulang", "stok", "restock", "masuk", "simpan"],
     HEADERS: {
+      TRANSACTION_ID: ["Transaction ID", "TransactionID"],
       PRODUCT_ID: ["Product ID", "ProductID"],
-      PRODUCT_NAME: ["Product Name", "Nama Produk"],
+      PRODUCT_NAME: ["Product Name", "Nama Produk", "Barang"],
       PRODUCT_UNIT: ["Unit", "Satuan"],
       PRODUCT_ACTIVE: ["Active", "Aktif"],
       STOCK: ["Current Stock", "Stock", "Stok", "Jumlah"],
       TYPE: ["Type", "Jenis"],
       QUANTITY: ["Quantity", "Qty", "Jumlah"],
       DATE: ["Date", "Tanggal"],
+      UNIT_PRICE: ["Harga Satuan", "Unit Price"],
+      TOTAL: ["Total"],
       NOTE: ["Note", "Notes", "Catatan"]
     }
   },

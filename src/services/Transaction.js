@@ -107,127 +107,139 @@ function getTransactionById(transactionId){
 }
 
 /**
- * Mengambil seluruh transaksi.
+/**
+ * Mengambil seluruh transaksi dari sheet Transactions.
  *
  * @returns {Array<Object>}
  */
 function getTransactions(){
 
   const sheet = getSheet(CONFIG.SHEETS.TRANSACTIONS);
-
   const data = sheet.getDataRange().getValues();
 
-  data.shift();
+  if (data.length <= 1) {
+    return [];
+  }
 
-  return data.map(row => {
+  const headers = data.shift();
+  const headerMap = getTransactionHeaderMap(headers);
 
-    if (row.length <= 7) {
-      return {
-        transactionId : "",
-        timestamp : row[0],
-        date : row[1],
-        transactionType : row[2],
-        walletId : "",
-        walletName : row[3],
-        referenceType : "",
-        referenceId : "",
-        category : "",
-        subCategory : "",
-        merchant : "",
-        description : row[4],
-        amount : Number(row[5]),
-        note : row[6],
-        attachment : "",
-        createdAt : "",
-        updatedAt : ""
-      };
-    }
-
-    if (row.length === 8) {
-      return {
-        transactionId : "",
-        timestamp : row[0],
-        date : row[1],
-        transactionType : row[2],
-        walletId : "",
-        walletName : row[3],
-        referenceType : "",
-        referenceId : "",
-        category : row[4],
-        subCategory : "",
-        merchant : "",
-        description : row[5],
-        amount : Number(row[6]),
-        note : row[7],
-        attachment : "",
-        createdAt : "",
-        updatedAt : ""
-      };
-    }
-
-    if (row.length === 9) {
-      return {
-        transactionId : "",
-        timestamp : row[0],
-        date : row[1],
-        transactionType : row[2],
-        walletId : "",
-        walletName : row[3],
-        targetWalletId : "",
-        targetWalletName : row[4],
-        referenceType : "",
-        referenceId : "",
-        category : row[5],
-        subCategory : "",
-        merchant : "",
-        description : row[6],
-        amount : Number(row[7]),
-        note : row[8],
-        attachment : "",
-        createdAt : "",
-        updatedAt : ""
-      };
-    }
-
-    return {
-
-      transactionId : row[0],
-
-      date : row[1],
-
-      transactionType : row[2],
-
-      walletId : row[3],
-
-      walletName : row[4],
-
-      referenceType : row[5],
-
-      referenceId : row[6],
-
-      category : row[7],
-
-      subCategory : row[8],
-
-      merchant : row[9],
-
-      description : row[10],
-
-      amount : Number(row[11]),
-
-      note : row[12],
-
-      attachment : row[13],
-
-      createdAt : row[14],
-
-      updatedAt : row[15]
-
-    };
-
-  });
+  return data.map(row => mapTransactionRow(row, headerMap));
 
 }
+
+/**
+ * Memetakan indeks kolom transaksi berdasarkan header.
+ *
+ * @param {Array<String>} headers
+ * @returns {Object}
+ */
+function getTransactionHeaderMap(headers) {
+
+  const normalized = headers.map(h => normalizeText(h));
+
+  return {
+    date: findHeaderIndex(normalized, ["tanggal", "date"]),
+    type: findHeaderIndex(normalized, ["jenis", "transaction type", "type"]),
+    wallet: findHeaderIndex(normalized, ["wallet", "dompet"]),
+    targetWallet: findHeaderIndex(normalized, ["wallet tujuan", "target wallet"]),
+    category: findHeaderIndex(normalized, ["kategori", "category"]),
+    description: findHeaderIndex(normalized, ["keterangan", "description"]),
+    amount: findHeaderIndex(normalized, ["nominal", "amount", "jumlah"]),
+    note: findHeaderIndex(normalized, ["catatan", "note"])
+  };
+
+}
+
+/**
+ * Mencari indeks header dari daftar nama alias.
+ *
+ * @param {Array<String>} headers
+ * @param {Array<String>} aliases
+ * @returns {Number}
+ */
+function findHeaderIndex(headers, aliases) {
+
+  for (let i = 0; i < aliases.length; i++) {
+    const idx = headers.indexOf(aliases[i]);
+    if (idx !== -1) return idx;
+  }
+
+  return -1;
+
+}
+
+/**
+ * Mengubah satu baris sheet menjadi Transaction Object.
+ *
+ * @param {Array<*>} row
+ * @param {Object} map
+ * @returns {Object}
+ */
+function mapTransactionRow(row, map) {
+
+  if (map.amount !== -1) {
+    return {
+      transactionId: "",
+      timestamp: row[0],
+      date: map.date !== -1 ? row[map.date] : row[1],
+      transactionType: map.type !== -1 ? row[map.type] : CONFIG.DEFAULT.TRANSACTION_TYPE,
+      walletId: "",
+      walletName: map.wallet !== -1 ? row[map.wallet] : "",
+      targetWalletId: "",
+      targetWalletName: map.targetWallet !== -1 ? row[map.targetWallet] : "",
+      referenceType: "",
+      referenceId: "",
+      category: map.category !== -1 ? row[map.category] : CONFIG.DEFAULT.CATEGORY,
+      subCategory: "",
+      merchant: "",
+      description: map.description !== -1 ? row[map.description] : "",
+      amount: Number(row[map.amount] || 0),
+      note: map.note !== -1 ? row[map.note] : "",
+      attachment: "",
+      createdAt: "",
+      updatedAt: ""
+    };
+  }
+
+  return mapFallbackTransactionRow(row);
+
+}
+
+/**
+ * Fallback mapping transaksi berdasarkan panjang baris legacy.
+ *
+ * @param {Array<*>} row
+ * @returns {Object}
+ */
+function mapFallbackTransactionRow(row) {
+
+  const isNine = row.length === 9;
+
+  return {
+    transactionId: row[0] || "",
+    timestamp: row[0],
+    date: row[1],
+    transactionType: row[2],
+    walletId: "",
+    walletName: row[3],
+    targetWalletId: "",
+    targetWalletName: isNine ? row[4] : "",
+    referenceType: "",
+    referenceId: "",
+    category: isNine ? row[5] : (row[4] || CONFIG.DEFAULT.CATEGORY),
+    subCategory: "",
+    merchant: "",
+    description: isNine ? row[6] : row[5],
+    amount: Number(isNine ? row[7] : (row[6] || 0)),
+    note: isNine ? row[8] : row[7],
+    attachment: "",
+    createdAt: "",
+    updatedAt: ""
+  };
+
+}
+
 
 /**
  * Update transaksi berdasarkan ID.

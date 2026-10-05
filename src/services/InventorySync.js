@@ -16,6 +16,29 @@ function syncInventoryPurchases(transactions) {
 }
 
 /**
+ * Menguji akses ke Home Inventory tanpa menulis atau mengubah data.
+ * Jalankan fungsi ini secara manual dari editor Apps Script.
+ *
+ * @returns {Object}
+ */
+function testHomeInventoryConnection() {
+
+  try {
+    const details = getHomeInventoryConnectionDetails();
+
+    Logger.log("Home Inventory tersambung: " + details.spreadsheetName);
+    Logger.log("Product_Master: " + details.productMasterHeaders.join(", "));
+    Logger.log("Inventory: " + details.inventoryHeaders.join(", "));
+    Logger.log("Transaction: " + details.transactionHeaders.join(", "));
+    return details;
+  } catch (error) {
+    Logger.log("Home Inventory tidak tersambung: " + error.message);
+    throw error;
+  }
+
+}
+
+/**
  * Menyinkronkan satu transaksi bila merupakan pembelian produk inventory.
  *
  * @param {Object} transaction

@@ -34,6 +34,38 @@ function getHomeInventorySheet(sheetName) {
 }
 
 /**
+ * Mengambil informasi koneksi tanpa mengubah data Home Inventory.
+ *
+ * @returns {Object}
+ */
+function getHomeInventoryConnectionDetails() {
+
+  const spreadsheet = getHomeInventorySpreadsheet();
+  const sheets = CONFIG.HOME_INVENTORY.SHEETS;
+
+  return {
+    spreadsheetName: spreadsheet.getName(),
+    productMasterHeaders: getHomeInventorySheetHeaders(sheets.PRODUCT_MASTER),
+    inventoryHeaders: getHomeInventorySheetHeaders(sheets.INVENTORY),
+    transactionHeaders: getHomeInventorySheetHeaders(sheets.TRANSACTION)
+  };
+
+}
+
+/**
+ * Mengambil header sebuah sheet Home Inventory.
+ *
+ * @param {String} sheetName
+ * @returns {Array<String>}
+ */
+function getHomeInventorySheetHeaders(sheetName) {
+
+  const sheet = getHomeInventorySheet(sheetName);
+  return sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+
+}
+
+/**
  * Mencari produk aktif yang namanya muncul pada input transaksi.
  *
  * @param {String} input
@@ -94,7 +126,10 @@ function saveHomeInventoryPurchase(purchase) {
     CONFIG.HOME_INVENTORY.SHEETS.TRANSACTION
   );
   const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-  const row = headers.map(header => getHomeInventoryPurchaseValue(header, purchase));
+  const record = Object.assign({}, purchase, {
+    inventoryTransactionId: Utilities.getUuid()
+  });
+  const row = headers.map(header => getHomeInventoryPurchaseValue(header, record));
 
   sheet.appendRow(row);
   return sheet.getLastRow();
@@ -272,12 +307,15 @@ function getHomeInventoryPurchaseValue(header, purchase) {
   const headers = CONFIG.HOME_INVENTORY.HEADERS;
   const value = normalizeText(header);
 
+  if (matchesHomeInventoryHeader(value, headers.TRANSACTION_ID)) return purchase.inventoryTransactionId;
   if (matchesHomeInventoryHeader(value, headers.TYPE)) return "PURCHASE";
   if (matchesHomeInventoryHeader(value, headers.PRODUCT_ID)) return purchase.product.productId;
   if (matchesHomeInventoryHeader(value, headers.PRODUCT_NAME)) return purchase.product.productName;
   if (matchesHomeInventoryHeader(value, headers.QUANTITY)) return purchase.quantity;
   if (matchesHomeInventoryHeader(value, headers.PRODUCT_UNIT)) return purchase.product.unit;
   if (matchesHomeInventoryHeader(value, headers.DATE)) return purchase.transaction.date;
+  if (matchesHomeInventoryHeader(value, headers.UNIT_PRICE)) return purchase.transaction.amount / purchase.quantity;
+  if (matchesHomeInventoryHeader(value, headers.TOTAL)) return purchase.transaction.amount;
   if (matchesHomeInventoryHeader(value, headers.NOTE)) return purchase.transaction.description;
   return "";
 

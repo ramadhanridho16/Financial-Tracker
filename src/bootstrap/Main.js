@@ -46,6 +46,8 @@ function processTransaction(e) {
 
     updateWalletBalances();
 
+    refreshDashboard();
+
     const transactionRow = formatTransactionRows(transactionRows);
 
     Logger.log("================================");
