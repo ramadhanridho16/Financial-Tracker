@@ -146,6 +146,17 @@ const CONFIG = Object.freeze({
 
   },
 
+  TELEGRAM: {
+
+    API_URL: "https://api.telegram.org/bot",
+    FILE_URL: "https://api.telegram.org/file/bot",
+    BOT_TOKEN: "8627740740:AAEa2UbSqUqdGJI-msg9nW6qg9-V9pWzxu8",
+    DEFAULT_CHAT_ID: "",
+    ALLOWED_USER_IDS: [],
+    RECEIPTS_FOLDER_NAME: "Financial Tracker Receipts"
+
+  },
+
   DEBUG: {
 
     ENABLE: true

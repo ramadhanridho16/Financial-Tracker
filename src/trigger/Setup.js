@@ -146,6 +146,11 @@ function onOpen() {
     .addItem("Perbarui Saldo Wallet", "updateWalletBalances")
     .addItem("Perbarui Dashboard", "refreshDashboard")
     .addItem("Perbarui Report", "refreshReport")
+    .addSeparator()
+    .addItem("Pasang Webhook Telegram", "setupTelegramWebhookPrompt")
+    .addItem("Cek Status Webhook Telegram", "showTelegramWebhookStatus")
+    .addItem("Uji Koneksi Bot Telegram", "testTelegramBotConnection")
+    .addItem("Simulasi Pesan Teks Telegram", "testTelegramMessageSimulation")
     .addToUi();
 
 }
@@ -492,3 +497,78 @@ function seedDashboard() {
   ]);
 
 }
+
+/**
+ * Meminta Web App URL dari pengguna dan mendaftarkannya ke Telegram Bot Webhook.
+ */
+function setupTelegramWebhookPrompt() {
+  const ui = SpreadsheetApp.getUi();
+  const prompt = ui.prompt(
+    "Pasang Webhook Telegram",
+    "Masukkan Web App URL (Deploy > Web app):\nContoh: https://script.google.com/macros/s/.../exec",
+    ui.ButtonSet.OK_CANCEL
+  );
+
+  if (prompt.getSelectedButton() !== ui.Button.OK) return;
+
+  const url = prompt.getResponseText().trim();
+  if (!url || !url.startsWith("https://")) {
+    ui.alert("URL tidak valid. Pastikan diawali dengan https://");
+    return;
+  }
+
+  const result = setTelegramWebhook(url);
+  if (result.ok) {
+    ui.alert("Berhasil!", "Webhook Telegram berhasil dipasang ke:\n" + url, ui.ButtonSet.OK);
+  } else {
+    ui.alert("Gagal!", "Error: " + result.description, ui.ButtonSet.OK);
+  }
+}
+
+/**
+ * Menampilkan status Webhook Telegram aktif.
+ */
+function showTelegramWebhookStatus() {
+  const ui = SpreadsheetApp.getUi();
+  const info = getTelegramWebhookInfo();
+
+  if (!info.ok) {
+    ui.alert("Gagal mengambil status: " + (info.description || "Unknown error"));
+    return;
+  }
+
+  const res = info.result;
+  const msg = "• Status URL: " + (res.url || "(Belum terpasang)") + "\n" +
+    "• Pending Updates: " + (res.pending_update_count || 0) + "\n" +
+    "• Last Error Date: " + (res.last_error_date ? new Date(res.last_error_date * 1000) : "None") + "\n" +
+    "• Last Error Message: " + (res.last_error_message || "None");
+
+  ui.alert("Status Webhook Telegram", msg, ui.ButtonSet.OK);
+}
+
+/**
+ * Menguji koneksi bot ke Telegram API.
+ */
+function testTelegramBotConnection() {
+  const ui = SpreadsheetApp.getUi();
+  try {
+    const info = callTelegramApi("getMe");
+    if (info.ok) {
+      ui.alert("Koneksi Berhasil!", "Bot: @" + info.result.username + " (" + info.result.first_name + ")", ui.ButtonSet.OK);
+    } else {
+      ui.alert("Koneksi Gagal: " + info.description);
+    }
+  } catch (err) {
+    ui.alert("Error: " + err.message);
+  }
+}
+
+/**
+ * Menyimulasikan input transaksi pesan teks layaknya dari Telegram.
+ */
+function testTelegramMessageSimulation() {
+  const ui = SpreadsheetApp.getUi();
+  const sim = simulateTelegramMessage("Makan siang 25k bca");
+  ui.alert("Simulasi Transaksi Selesai", "Status: " + JSON.stringify(sim), ui.ButtonSet.OK);
+}
+
