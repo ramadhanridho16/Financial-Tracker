@@ -1,0 +1,27 @@
+# Project Roadmap
+
+## Milestone 1: Core Financial Tracking (v1.0 - Completed)
+- [x] Natural Language Parser & Indonesian slang normalizer
+- [x] Multi-wallet ledger & balance recalculation
+- [x] Basic category dictionary engine
+- [x] Budget limits & threshold warnings
+- [x] Loan tracking & status management
+
+## Milestone 2: Automation & Advanced Ingestion (v1.1 - v1.2 - Completed)
+- [x] Transfer wallet parser & multi-transaction comma separation
+- [x] Scheduled recurring transactions engine (Daily 01:00 AM clock trigger)
+- [x] Automated monthly Google Drive backup (CSV to ZIP)
+- [x] Household inventory cross-spreadsheet synchronization
+
+## Milestone 3: Executive Visual Dashboard (v1.3 - Completed)
+- [x] Dedicated DashboardRepository with clean visual formatting
+- [x] Monthly category consumption ranking & proportion breakdown
+- [x] Visual KPI cards (Top category, Total expense, Average per category)
+- [x] Automated Google Sheets Donut Chart for expense distribution
+- [x] Resilient header-based transaction mapping
+
+## Milestone 4: Next Planned Evolutions (Future Backlog)
+- [ ] **Phase 4.1: Split Transactions**: Memecah satu total transaksi menjadi beberapa alokasi kategori/item.
+- [ ] **Phase 4.2: Automated Receipt OCR**: Ekstraksi struk belanja dari lampiran form (`Bukti Invoice`) menggunakan Google Drive OCR atau Vision API.
+- [ ] **Phase 4.3: Telegram / WhatsApp Bot Integration**: Mengirim catatan transaksi langsung melalui bot chat messaging.
+- [ ] **Phase 4.4: AI Categorization Engine**: Peningkatan akurasi klasifikasi kategori menggunakan Gemini API untuk kalimat ambigu di luar kamus.
