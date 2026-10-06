@@ -41,7 +41,7 @@ function handleTelegramUpdate(update) {
   }
 
   if (msg.text) {
-    return handleTelegramTextMessage(msg.text.trim(), chatId);
+    return handleTelegramTextMessage(msg.text.trim(), chatId, update);
   }
 
   return { status: "unsupported_media" };
@@ -77,29 +77,15 @@ function isTelegramUserAuthorized(userId) {
  *
  * @param {String} text
  * @param {String|Number} chatId
+ * @param {Object} [update]
  * @returns {Object}
  */
-function handleTelegramTextMessage(text, chatId) {
-  const lower = text.toLowerCase();
-
-  if (lower === "/start" || lower === "/bantuan" || lower === "/help") {
-    sendTelegramMessage(chatId, getTelegramHelpMessage());
-    return { status: "help_sent" };
-  }
-
-  if (lower === "/saldo" || lower === "/wallet") {
-    sendTelegramMessage(chatId, getTelegramWalletBalancesMessage());
-    return { status: "balance_sent" };
-  }
-
-  if (lower === "/ringkasan" || lower === "/dashboard") {
-    sendTelegramMessage(chatId, getTelegramDashboardSummaryMessage());
-    return { status: "dashboard_sent" };
-  }
-
-  if (lower === "/ping") {
-    sendTelegramMessage(chatId, "🏓 *Pong!*\nSistem Financial Tracker aktif dan tersambung.");
-    return { status: "pong" };
+function handleTelegramTextMessage(text, chatId, update) {
+  if (text.startsWith("/")) {
+    const cmdResult = dispatchBotCommand(text, chatId, update);
+    if (cmdResult.handled) {
+      return cmdResult;
+    }
   }
 
   return processTelegramTransactionInput(text, chatId);
