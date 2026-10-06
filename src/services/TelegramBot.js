@@ -18,6 +18,15 @@ function handleTelegramUpdate(update) {
     return { status: "ignored", reason: "no message object" };
   }
 
+  if (update.update_id) {
+    const cache = CacheService.getScriptCache();
+    const cacheKey = "tg_update_" + update.update_id;
+    if (cache.get(cacheKey)) {
+      return { status: "ignored", reason: "duplicate_update" };
+    }
+    cache.put(cacheKey, "1", 600);
+  }
+
   const msg = update.message;
   const chatId = msg.chat.id;
   const userId = msg.from ? msg.from.id : chatId;

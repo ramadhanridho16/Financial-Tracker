@@ -118,7 +118,10 @@ function downloadTelegramFileBlob(filePath) {
  * @returns {Object}
  */
 function setTelegramWebhook(webhookUrl, secretToken) {
-  const payload = { url: webhookUrl };
+  const payload = {
+    url: webhookUrl,
+    drop_pending_updates: true
+  };
   if (secretToken) {
     payload.secret_token = secretToken;
   }

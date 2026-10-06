@@ -308,19 +308,24 @@ function clearExistingDashboardCharts(sheet) {
 function renderCategoryDonutChart(sheet, startRow, endRow) {
   if (endRow < startRow) return;
 
-  const categoryRange = sheet.getRange(startRow, DASHBOARD_COLUMNS.CATEGORY_NAME, endRow - startRow + 1, 1);
-  const amountRange = sheet.getRange(startRow, DASHBOARD_COLUMNS.CATEGORY_AMOUNT, endRow - startRow + 1, 1);
+  try {
+    const categoryRange = sheet.getRange(startRow, DASHBOARD_COLUMNS.CATEGORY_NAME, endRow - startRow + 1, 1);
+    const amountRange = sheet.getRange(startRow, DASHBOARD_COLUMNS.CATEGORY_AMOUNT, endRow - startRow + 1, 1);
 
-  const chart = sheet.newPieChart()
-    .setTitle("Porsi Konsumsi Kategori Bulan Ini")
-    .addRange(categoryRange)
-    .addRange(amountRange)
-    .setPosition(2, DASHBOARD_COLUMNS.CHART_START, 0, 0)
-    .setOption("pieHole", 0.45)
-    .setOption("legend", { position: "right" })
-    .setOption("chartArea", { left: 15, top: 35, width: "90%", height: "80%" })
-    .setOption("colors", ["#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#EC4899", "#14B8A6", "#6366F1"])
-    .build();
+    const chart = sheet.newChart()
+      .asPieChart()
+      .setTitle("Porsi Konsumsi Kategori Bulan Ini")
+      .addRange(categoryRange)
+      .addRange(amountRange)
+      .setPosition(2, DASHBOARD_COLUMNS.CHART_START, 0, 0)
+      .setOption("pieHole", 0.45)
+      .setOption("legend", { position: "right" })
+      .setOption("chartArea", { left: 15, top: 35, width: "90%", height: "80%" })
+      .setOption("colors", ["#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#EC4899", "#14B8A6", "#6366F1"])
+      .build();
 
-  sheet.insertChart(chart);
+    sheet.insertChart(chart);
+  } catch (err) {
+    logError("Gagal merender Donut Chart: " + err.message);
+  }
 }

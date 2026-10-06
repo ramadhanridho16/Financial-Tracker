@@ -55,16 +55,16 @@ function doGet(e) {
 function doPost(e) {
   try {
     if (!e || !e.postData || !e.postData.contents) {
-      return createJsonResponse({ ok: false, reason: "No post data received" });
+      return HtmlService.createHtmlOutput("No post data received");
     }
 
     const update = JSON.parse(e.postData.contents);
-    const result = handleTelegramUpdate(update);
+    handleTelegramUpdate(update);
 
-    return createJsonResponse({ ok: true, result: result });
+    return HtmlService.createHtmlOutput("OK");
   } catch (error) {
     logError("Webhook doPost Error: " + error.message);
-    return createJsonResponse({ ok: false, error: error.message });
+    return HtmlService.createHtmlOutput("Error: " + error.message);
   }
 }
 
@@ -88,7 +88,12 @@ function createJsonResponse(data) {
  * @returns {Object}
  */
 function simulateTelegramMessage(text, chatId) {
-  const id = chatId || 1001;
+  let id = chatId;
+  if (!id) {
+    const settingId = getSetting("Telegram Allowed User ID") || getSetting("Telegram Default Chat ID");
+    id = settingId ? String(settingId).split(",")[0].trim() : (CONFIG.TELEGRAM.DEFAULT_CHAT_ID || 1001);
+  }
+
   const mockUpdate = {
     update_id: Math.floor(Math.random() * 100000),
     message: {
