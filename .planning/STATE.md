@@ -16,3 +16,4 @@
 ## Next Actions
 - Project initialized in GSD planning framework (`.planning/`).
 - Future enhancements ready for planning: Split Transactions, Receipt OCR, Chat Bot Ingestion, AI Categorization.
+

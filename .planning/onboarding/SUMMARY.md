@@ -23,3 +23,4 @@ Peta codebase lengkap telah dibuat pada `.planning/codebase/`:
 1. `/gsd-progress` — Memeriksa status dan progres proyek secara menyeluruh.
 2. `/gsd-plan-phase` — Merencanakan fase fitur baru dari backlog (misal: Split Transactions atau Receipt OCR).
 3. `/gsd-quick` — Menjalankan perbaikan atau penyesuaian cepat dengan garansi commit atomik.
+

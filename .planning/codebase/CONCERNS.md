@@ -14,3 +14,4 @@
 
 ## 4. Hardcoded External Spreadsheet ID
 - `CONFIG.HOME_INVENTORY.SPREADSHEET_ID` is hardcoded in `src/config/Config.js`. If the user does not possess permissions to that external sheet, `InventorySync` operations may fail silently or log errors unless handled defensively.
+

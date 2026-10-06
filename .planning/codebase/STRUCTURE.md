@@ -54,3 +54,4 @@ Financial Tracker/
     ├── codebase/                # Codebase intelligence & map
     └── onboarding/              # Onboarding artifacts & summary
 ```
+

@@ -29,3 +29,4 @@
 - **Household Inventory Spreadsheet (Cross-Spreadsheet Sync)**:
   - Managed by `src/repositories/HomeInventory.js` and `src/services/InventorySync.js`.
   - Reads product catalog from external spreadsheet (`Product_Master`), detects purchase keywords (`beli`, `stok`, `restock`, etc.), and appends purchase transactions into `Inventory` / `Transaction` sheets.
+

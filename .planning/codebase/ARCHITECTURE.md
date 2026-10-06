@@ -51,3 +51,4 @@ The application strictly enforces a unidirectional, multi-layered architecture:
 
 ### 5. Storage Layer (`Google Spreadsheet & Drive`)
 - Relational-like table schema storing records in dedicated sheets defined in `CONFIG.SHEETS`.
+

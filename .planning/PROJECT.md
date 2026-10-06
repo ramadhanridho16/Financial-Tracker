@@ -26,3 +26,4 @@ Personal use (Single user).
 - ❌ ERP multi-perusahaan.
 - ❌ Multi-user authorization & permission management.
 - ❌ Online SQL/NoSQL database server eksternal (Google Sheets digunakan sebagai database).
+

@@ -20,3 +20,4 @@
 
 ## 4. Backwards Compatibility
 - Always maintain backwards compatibility for existing spreadsheet structures and sheet headers.
+

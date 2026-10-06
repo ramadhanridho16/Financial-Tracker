@@ -31,3 +31,4 @@
 - **REQ-NFR-02**: Akses ke Spreadsheet hanya diperbolehkan melalui layer Repository.
 - **REQ-NFR-03**: Parser harus berupa pure functions tanpa dependensi ke Spreadsheet.
 - **REQ-NFR-04**: Seluruh nama sheet dan nama kolom tidak boleh di-hardcode.
+

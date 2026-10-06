@@ -22,3 +22,4 @@
 - `.clasp.json`: Clasp mapping file configuring root directory `src`, script ID, and file extensions (`.js`, `.gs`, `.html`, `.json`).
 - `src/appsscript.json`: Google Apps Script project configuration specifying V8 runtime and project timezone.
 - `src/config/Config.js`: Central application configuration defining sheet names, transaction types, recurring intervals, default values, archive settings, and Home Inventory schemas.
+

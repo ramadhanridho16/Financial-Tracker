@@ -17,3 +17,4 @@ The project operates in Google Apps Script without a standard local Node.js test
 ### 2. Testing Gaps
 - **Lack of Local Automated Tests**: Because the code runs on GAS V8, there are currently no offline unit tests for `Parser.js`, `Normalizer.js`, or amount extraction algorithms.
 - **Pure Parser Testing Opportunities**: Since `src/parser/Parser.js` and `src/normalizer/Normalizer.js` are pure functions without Spreadsheet dependencies, lightweight local test runners (or Node-based Jest tests) can be introduced to test Indonesian phrase parsing permutations.
+
