@@ -113,3 +113,4 @@ function readAndCleanupOcrDoc(fileId) {
     return "";
   }
 }
+

@@ -163,3 +163,4 @@ function buildTransactionSentenceFromReceipt(extracted, defaultWallet) {
   const amountStr = extracted.amount > 0 ? String(extracted.amount) : "0";
   return extracted.merchant + " " + amountStr + " " + wallet;
 }
+

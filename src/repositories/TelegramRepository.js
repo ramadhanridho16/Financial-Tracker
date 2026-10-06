@@ -142,3 +142,4 @@ function getTelegramWebhookInfo() {
 function deleteTelegramWebhook() {
   return callTelegramApi("deleteWebhook");
 }
+

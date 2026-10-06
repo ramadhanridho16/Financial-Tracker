@@ -114,3 +114,4 @@ function simulateReceiptOcrFromFile(fileId) {
   const blob = file.getBlob();
   return processReceiptImage(blob);
 }
+
