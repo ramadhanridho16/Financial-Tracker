@@ -65,6 +65,10 @@ function initializeBotCommands() {
   registerBotCommand("/budget", handleBudgetCommand, "Melihat limit dan peringatan budget bulanan", "/budget");
   registerBotCommand("/terakhir", handleRecentTransactionsCommand, "Melihat 5 transaksi terakhir", "/terakhir");
   registerBotCommand("/utang", handleLoansCommand, "Melihat daftar pinjaman dan kewajiban cicilan", "/utang");
+  registerBotCommand("/kredit", handleKreditCommand, "Mencatat pinjaman baru via mode percakapan berpemandu", "/kredit");
+  registerBotCommand("/kalender", handleCalendarCommand, "Melihat kalender jatuh tempo cicilan bulanan", "/kalender");
+  registerBotCommand("/jadwal", handleCalendarCommand, "Alias kalender cicilan", "/jadwal");
+  registerBotCommand("/batal", handleCancelWizardCommand, "Membatalkan sesi percakapan kredit aktif", "/batal");
 }
 
 /**
@@ -256,17 +260,87 @@ function handleRecentTransactionsCommand() {
 function handleLoansCommand() {
   const loans = getLoans();
   if (loans.length === 0) {
-    return "🤝 *Daftar Pinjaman:*\nTidak ada catatan pinjaman aktif.";
+    return "🤝 *Daftar Pinjaman:*\nTidak ada catatan pinjaman di sheet Loans.";
   }
 
-  let text = "🤝 *Daftar Pinjaman / Utang:*\n\n";
-  loans.forEach(l => {
-    text += "• *" + l.loanName + "* (" + l.loanType + ")\n" +
-      "  Pemberi/Penerima: " + l.lender + "\n" +
-      "  Pokok: " + formatCurrency(l.principal) + "\n" +
-      "  Cicilan: " + formatCurrency(l.installmentAmount) + "/bln (Tgl " + l.dueDay + ")\n\n";
+  let text = "🤝 *Daftar Pinjaman & Status Pelunasan:*\n\n";
+  loans.forEach((l, idx) => {
+    const summary = getLoanSettlementSummary(l);
+    const badge = l.status === CONFIG.STATUS.PAID ? "✅ LUNAS" : "🔄 ACTIVE";
+
+    text += "*" + (idx + 1) + ". " + l.loanName + "* (`" + l.loanId + "`)\n" +
+      "  • Pihak: " + l.lender + " (" + l.loanType + ")\n" +
+      "  • Pokok: " + formatCurrency(l.principal) + " | Bunga: " + l.interestType + "\n" +
+      "  • Cicilan: *" + formatCurrency(l.installmentAmount) + "/bln* (Tgl " + l.installmentDay + ")\n" +
+      "  • Terbayar: " + formatCurrency(summary.totalPaid) + " / " + formatCurrency(summary.totalObligation) + "\n" +
+      "  • Status: *" + badge + "*\n\n";
   });
 
+  text += "💡 _Ketik `/kredit` untuk menambah pinjaman baru, atau `/kalender` untuk melihat kalender cicilan._";
   return text;
 }
+
+/**
+ * Handler Perintah: /kredit (Memulai mode percakapan berpemandu)
+ *
+ * @param {String|Number} chatId
+ * @returns {String}
+ */
+function handleKreditCommand(chatId) {
+  return startLoanWizard(chatId);
+}
+
+/**
+ * Handler Perintah: /kalender atau /jadwal
+ *
+ * @param {String|Number} chatId
+ * @param {String} [args]
+ * @returns {String}
+ */
+function handleCalendarCommand(chatId, args) {
+  let targetDate = new Date();
+  if (args) {
+    const monthNum = parseInt(args.trim(), 10);
+    if (!isNaN(monthNum) && monthNum >= 1 && monthNum <= 12) {
+      targetDate.setMonth(monthNum - 1);
+    }
+  }
+
+  const cal = getMonthlyLoanCalendar(targetDate);
+  const monthNames = [
+    "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+    "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+  ];
+  const monthName = monthNames[cal.month - 1];
+
+  let text = "📅 *Kalender Cicilan & Pinjaman — " + monthName + " " + cal.year + "*\n";
+  text += "--------------------------------------------------\n";
+
+  if (cal.schedule.length === 0) {
+    text += "_Tidak ada jadwal cicilan aktif pada bulan ini._\n";
+  } else {
+    cal.schedule.forEach(s => {
+      const statusIcon = s.isPaidThisMonth ? "✅ Sudah Dibayar" : "⏳ Belum Dibayar";
+      text += "• *Tgl " + s.day + ":* " + s.loanName + " (" + s.lender + ")\n" +
+        "   Nominal: *" + formatCurrency(s.amount) + "* [" + statusIcon + "]\n";
+    });
+  }
+
+  text += "--------------------------------------------------\n";
+  text += "💰 *Total Kewajiban Bulan Ini:* " + formatCurrency(cal.totalMonthlyObligation) + "\n";
+  text += "💳 *Sisa Belum Terbayar:* " + formatCurrency(cal.totalRemainingObligation);
+  return text;
+}
+
+/**
+ * Handler Perintah: /batal
+ *
+ * @param {String|Number} chatId
+ * @returns {String}
+ */
+function handleCancelWizardCommand(chatId) {
+  clearLoanWizardState(chatId);
+  return "❌ *Sesi Dibatalkan*\nTidak ada data yang disimpan.";
+}
+
 

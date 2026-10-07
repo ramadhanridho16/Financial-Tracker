@@ -80,28 +80,19 @@ const SHEET_HEADERS = Object.freeze({
     "Saldo Saat Ini"
   ],
   [CONFIG.SHEETS.LOANS]: [
-    "Loan ID",
-    "Loan Name",
+    "LoanID",
+    "LoanName",
     "Lender",
-    "Loan Type",
+    "LoanType",
     "Principal",
-    "Wallet",
-    "Has Interest",
-    "Interest Type",
-    "Interest Rate",
-    "Start Date",
-    "Tenor",
-    "Due Day",
-    "Installment Known",
-    "Installment Amount",
-    "Payment Method",
-    "Payment Wallet",
-    "Purpose",
-    "Attachment",
-    "Note",
+    "InterestType",
+    "InterestRate",
+    "StartDate",
+    "DueDate",
+    "InstallmentAmount",
+    "InstallmentDay",
     "Status",
-    "Created At",
-    "Updated At"
+    "Notes"
   ],
   [CONFIG.SHEETS.BUDGET]: [
     "Budget ID",
@@ -151,6 +142,8 @@ function onOpen() {
     .addItem("Cek Status Webhook Telegram", "showTelegramWebhookStatus")
     .addItem("Uji Koneksi Bot Telegram", "testTelegramBotConnection")
     .addItem("Simulasi Pesan Teks Telegram", "testTelegramMessageSimulation")
+    .addItem("Kirim Pengingat Cicilan Hari Ini", "sendDailyLoanDueReminders")
+    .addItem("Pasang Pengingat Cicilan Harian", "installDailyLoanReminderTrigger")
     .addToUi();
 
 }
@@ -386,6 +379,31 @@ function installMonthlyBackupTrigger() {
 
   return "Trigger backup Drive bulanan berhasil dipasang.";
 
+}
+
+/**
+ * Memasang satu trigger harian untuk pengingat jatuh tempo cicilan jam 08:00 WIB.
+ *
+ * @returns {String}
+ */
+function installDailyLoanReminderTrigger() {
+  const triggers = ScriptApp.getProjectTriggers();
+
+  triggers
+    .filter(trigger =>
+      trigger.getHandlerFunction() === "sendDailyLoanDueReminders" &&
+      trigger.getEventType() === ScriptApp.EventType.CLOCK
+    )
+    .forEach(trigger => ScriptApp.deleteTrigger(trigger));
+
+  ScriptApp
+    .newTrigger("sendDailyLoanDueReminders")
+    .timeBased()
+    .atHour(8)
+    .everyDays(1)
+    .create();
+
+  return "Trigger pengingat cicilan harian berhasil dipasang pada jam 08:00 WIB.";
 }
 
 function getOrCreateSheet(spreadsheet, sheetName) {

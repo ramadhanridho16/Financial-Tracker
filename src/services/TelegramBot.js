@@ -81,6 +81,16 @@ function isTelegramUserAuthorized(userId) {
  * @returns {Object}
  */
 function handleTelegramTextMessage(text, chatId, update) {
+  if (isLoanWizardActive(chatId)) {
+    if (text.startsWith("/") && text.toLowerCase() !== "/batal") {
+      clearLoanWizardState(chatId);
+    } else {
+      const wizardReply = handleLoanWizardStep(chatId, text);
+      sendTelegramMessage(chatId, wizardReply);
+      return { status: "loan_wizard_progress" };
+    }
+  }
+
   if (text.startsWith("/")) {
     const cmdResult = dispatchBotCommand(text, chatId, update);
     if (cmdResult.handled) {
@@ -114,9 +124,17 @@ function processTelegramTransactionInput(text, chatId) {
     updateWalletBalances();
     refreshDashboard();
 
-    const reply = formatTelegramTransactionReceipt(transactions);
+    const newlyPaidLoans = syncAllLoansSettlement();
+    let reply = formatTelegramTransactionReceipt(transactions);
+
+    if (newlyPaidLoans && newlyPaidLoans.length > 0) {
+      newlyPaidLoans.forEach(l => {
+        reply += "\n\n🎉 *PINJAMAN LUNAS!*\nPinjaman *" + l.loanName + "* (`" + l.loanId + "`) telah lunas terbayar!";
+      });
+    }
+
     sendTelegramMessage(chatId, reply);
-    return { status: "success", count: transactions.length };
+    return { status: "success", count: transactions.length, newlyPaidLoans: newlyPaidLoans.length };
   } catch (err) {
     sendTelegramMessage(chatId, "⚠️ *Gagal Mencatat Transaksi*\n" + err.message + "\n\nKetik `/bantuan` untuk melihat contoh format.");
     return { status: "error", error: err.message };
@@ -249,3 +267,43 @@ function getTelegramDashboardSummaryMessage() {
     "• *Kategori Terboros:* " + (summary.monthTopCategory || "-") + "\n\n" +
     "💳 *Total Uang Saat Ini:* " + formatCurrency(summary.totalWalletBalance);
 }
+
+/**
+ * Mengirimkan pesan pengingat jatuh tempo cicilan harian ke Telegram.
+ * Dipanggil otomatis oleh clock trigger atau secara manual.
+ *
+ * @param {Date} [refDate]
+ * @returns {Object}
+ */
+function sendDailyLoanDueReminders(refDate) {
+  const dueItems = getDueLoansForReminder(refDate);
+  if (!dueItems || dueItems.length === 0) {
+    return { status: "no_due_loans", count: 0 };
+  }
+
+  const defaultChatId = getSetting("Telegram Allowed User ID") || getSetting("Telegram Default Chat ID") || CONFIG.TELEGRAM.DEFAULT_CHAT_ID;
+  if (!defaultChatId) {
+    return { status: "no_chat_id", count: dueItems.length };
+  }
+
+  const primaryChatId = String(defaultChatId).split(",")[0].trim();
+  dueItems.forEach(item => {
+    const l = item.loan;
+    let timing = "HARI INI";
+    if (item.daysLeft === 1) timing = "BESOK";
+    else if (item.daysLeft === 3) timing = "DALAM 3 HARI";
+
+    const msg = "🔔 *PENGINGAT JATUH TEMPO CICILAN!*\n\n" +
+      "Pinjaman *" + l.loanName + "* (" + l.lender + ") jatuh tempo *" + timing + "* (Tgl " + l.installmentDay + ").\n\n" +
+      "• *Nominal Cicilan:* *" + formatCurrency(l.installmentAmount) + "*\n" +
+      "• *Pokok Pinjaman:* " + formatCurrency(l.principal) + "\n" +
+      "• *Sistem Bunga:* " + l.interestType + "\n" +
+      "• *Status:* `" + l.status + "`\n\n" +
+      "💡 _Segera lakukan pembayaran untuk menjaga kelancaran kredit Anda._";
+
+    sendTelegramMessage(primaryChatId, msg);
+  });
+
+  return { status: "reminders_sent", count: dueItems.length };
+}
+

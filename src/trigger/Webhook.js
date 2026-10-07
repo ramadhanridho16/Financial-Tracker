@@ -34,6 +34,16 @@ function doGet(e) {
       return createJsonResponse({ ok: true, testText: testText, result: simResult });
     }
 
+    if (action === "test_calendar") {
+      const cal = getMonthlyLoanCalendar();
+      return createJsonResponse({ ok: true, calendar: cal });
+    }
+
+    if (action === "test_reminders") {
+      const rem = sendDailyLoanDueReminders();
+      return createJsonResponse({ ok: true, reminders: rem });
+    }
+
     return createJsonResponse({
       ok: true,
       app: CONFIG.APP.NAME,
