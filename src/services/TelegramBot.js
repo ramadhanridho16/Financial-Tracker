@@ -161,13 +161,20 @@ function handleTelegramPhotoMessage(msg, chatId) {
     const photo = msg.photo[msg.photo.length - 1];
     const fileInfo = getTelegramFile(photo.file_id);
 
-    if (!fileInfo || !fileInfo.result) {
+    if (!fileInfo || !fileInfo.result || !fileInfo.result.file_path) {
       throw new Error("Gagal mengambil file foto dari Telegram.");
     }
 
     sendTelegramMessage(chatId, "🔍 _Menganalisis struk belanja dengan Gemini VLM..._");
     const blob = downloadTelegramFileBlob(fileInfo.result.file_path);
-    const driveFile = saveReceiptImageToDrive(blob);
+
+    let driveFileUrl = "";
+    try {
+      const driveFile = saveReceiptImageToDrive(blob);
+      driveFileUrl = driveFile.fileUrl;
+    } catch (driveErr) {
+      logError("Gagal menyimpan gambar ke Drive (melanjutkan VLM): " + driveErr.message);
+    }
 
     const apiKey = getGeminiApiKey();
     if (!apiKey) {
@@ -181,20 +188,21 @@ function handleTelegramPhotoMessage(msg, chatId) {
     const parsedReceipt = parseReceiptImageWithVlm(blob);
     const draft = {
       receipt: parsedReceipt,
-      fileUrl: driveFile.fileUrl,
+      fileUrl: driveFileUrl,
       walletName: CONFIG.DEFAULT.WALLET,
       chatId: chatId,
       timestamp: Date.now()
     };
 
     setPendingReceiptVerification(chatId, draft);
-    const cardMsg = formatReceiptVerificationCard(parsedReceipt, driveFile.fileUrl, draft.walletName);
+    const cardMsg = formatReceiptVerificationCard(parsedReceipt, driveFileUrl, draft.walletName);
     sendTelegramMessage(chatId, cardMsg);
 
     return { status: "receipt_verification_pending", amount: parsedReceipt.amount };
   } catch (err) {
     logError("Error handleTelegramPhotoMessage: " + err.message);
-    sendTelegramMessage(chatId, "⚠️ *Gagal Menganalisis Struk*\n" + err.message);
+    const safeErrorMsg = String(err.message || "Terjadi kesalahan internal").replace(/[*_`\[\]]/g, "");
+    sendTelegramMessage(chatId, "⚠️ Gagal Menganalisis Struk: " + safeErrorMsg);
     return { status: "vlm_error", error: err.message };
   }
 }

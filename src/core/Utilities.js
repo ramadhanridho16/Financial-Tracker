@@ -118,6 +118,17 @@ function formatCurrency(number){
 
 }
 
+/**
+ * Membersihkan atau me-escape karakter khusus Markdown Telegram (*, _, `, [).
+ *
+ * @param {String} text
+ * @returns {String}
+ */
+function escapeMarkdown(text) {
+  if (!text) return "";
+  return String(text).replace(/[_*[\]()~`>#+\-=|{}.!]/g, "\\$&");
+}
+
 
 /**
  * ==========================================================

@@ -153,3 +153,4 @@ function isRecoverableGeminiError(err) {
   const msg = String(err.message || "");
   return msg.indexOf("404") !== -1 || msg.indexOf("429") !== -1 || msg.indexOf("503") !== -1 || msg.indexOf("NOT_FOUND") !== -1;
 }
+

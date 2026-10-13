@@ -18,15 +18,20 @@ function buildReceiptVlmPrompt() {
     "ATURAN KRUSIAL PENALARAN STRUK:\n" +
     "1. Pahami tata letak visual struk secara menyeluruh (bukan hanya OCR teks acak).\n" +
     "2. PERHATIKAN: Angka di dalam kurung setelah kata 'Total' atau 'Subtotal' (misalnya 'Total (2)') adalah JUMLAH ITEM (quantity) dan BUKAN NOMINAL RUPIAH. Nominal total selalu berupa angka mata uang di sebelah kanan baris tersebut.\n" +
-    "3. VALIDASI ARITMATIKA SILANG: Hitung kembali `qty × harga per unit == total baris item`. Jumlahkan seluruh baris item dan bandingkan dengan Subtotal dan Total.\n" +
-    "4. REKONSTRUKSI TEKS TERTUTUP (OCCLUSION): Jika sebagian teks tertutup jempol/jari atau lipatan kertas (seperti '...total' atau '...al (2)'), gunakan konteks baris item dan angka untuk menyimpulkan nilai Total secara tepat.\n" +
-    "5. EKSTRAKSI FIELD:\n" +
-    "   - merchant: Nama toko/restoran/usaha yang menerbitkan struk.\n" +
-    "   - totalAmount: Nominal rupiah akhir yang wajib dibayar (angka bulat murni tanpa titik/koma).\n" +
-    "   - subtotal: Nominal sebelum pajak/diskon jika ada.\n" +
+    "3. STRUK INDOMARET / MINIMARKET / RESTORAN:\n" +
+    "   - Baris 'TOTAL BELANJA' atau 'TOTAL' adalah TOTAL NET AKHIR yang harus dibayar konsumen.\n" +
+    "   - Angka 'TUNAI' adalah uang pembayaran kasir, dan 'KEMBALI' adalah uang kembalian. JANGAN gunakan 'TUNAI' sebagai totalAmount kecuali tidak ada baris TOTAL BELANJA.\n" +
+    "   - Baris voucher/diskon bertanda kurung seperti '(1,300)' atau '-1300' adalah potongan harga.\n" +
+    "   - Baris 'DPP' dan 'PPN' adalah komponen pajak dari total, BUKAN total tambahan.\n" +
+    "4. VALIDASI ARITMATIKA SILANG: Hitung kembali `qty × harga per unit == total baris item`. Periksa apakah (Subtotal - Diskon/Voucher == Total Belanja).\n" +
+    "5. REKONSTRUKSI TEKS TERTUTUP (OCCLUSION): Jika sebagian teks tertutup jempol/jari atau lipatan kertas (seperti '...total' atau '...al (2)'), gunakan konteks baris item dan angka untuk menyimpulkan nilai Total secara tepat.\n" +
+    "6. EKSTRAKSI FIELD:\n" +
+    "   - merchant: Nama toko/restoran/usaha yang menerbitkan struk (contoh: 'Indomaret', 'Tahan Banting Coffee').\n" +
+    "   - totalAmount: Nominal rupiah akhir yang wajib dibayar konsumen (angka bulat murni tanpa titik/koma/spasi).\n" +
+    "   - subtotal: Nominal sebelum diskon/voucher jika ada.\n" +
     "   - items: Daftar array objek { name, qty, price, total }.\n" +
     "   - date: Tanggal transaksi format YYYY-MM-DD jika terbaca, atau null.\n" +
-    "   - category: Kategori belanja (misal: 'Makanan & Minuman', 'Transportasi', 'Belanja', 'Kebutuhan Rumah', 'Kesehatan', 'Lainnya').\n" +
+    "   - category: Kategori belanja (misal: 'Makanan & Minuman', 'Belanja', 'Kebutuhan Rumah', 'Kesehatan', 'Lainnya').\n" +
     "   - notes: Catatan ringkas (metode bayar, no struk, atau kasir).\n\n" +
     "Kembalikan HANYA JSON murni sesuai skema di atas tanpa pembungkus markdown tambahan.";
 }
@@ -45,19 +50,22 @@ function parseReceiptImageWithVlm(imageBlob) {
     throw new Error("Gagal membaca struktur data struk dari model VLM.");
   }
 
-  const amount = Math.round(Number(rawData.totalAmount) || 0);
+  let amount = parseNumber(rawData.totalAmount);
+  if (amount <= 0 && rawData.amount) {
+    amount = parseNumber(rawData.amount);
+  }
+
   if (amount <= 0 && rawData.items && rawData.items.length > 0) {
     // Rekonsiliasi darurat jika total 0 namun item tersedia
-    const sumItems = rawData.items.reduce((s, it) => s + (Number(it.total) || 0), 0);
-    rawData.totalAmount = sumItems;
+    amount = rawData.items.reduce((s, it) => s + (parseNumber(it.total) || 0), 0);
   }
 
   const matchedCategory = mapVlmCategoryToDictionary(rawData.category, rawData.merchant);
 
   return {
     merchant: rawData.merchant || "Merchant Belanja",
-    amount: Math.round(Number(rawData.totalAmount) || 0),
-    subtotal: Math.round(Number(rawData.subtotal) || 0),
+    amount: Math.round(amount),
+    subtotal: Math.round(parseNumber(rawData.subtotal) || amount),
     items: Array.isArray(rawData.items) ? rawData.items : [],
     category: matchedCategory,
     date: rawData.date || Utilities.formatDate(new Date(), "Asia/Jakarta", "yyyy-MM-dd"),
@@ -100,17 +108,22 @@ function mapVlmCategoryToDictionary(vlmCategory, merchant) {
  */
 function formatReceiptVerificationCard(parsedReceipt, fileUrl, walletName) {
   const defaultWallet = walletName || CONFIG.DEFAULT.WALLET;
+  const safeMerchant = String(parsedReceipt.merchant || "Merchant Belanja").replace(/[*_`\[\]]/g, "");
+  const safeCategory = String(parsedReceipt.category || CONFIG.DEFAULT.CATEGORY).replace(/[*_`\[\]]/g, "");
+  const safeWallet = String(defaultWallet).replace(/[*_`\[\]]/g, "");
+
   let text = "🧾 *Hasil Pindaian Struk (Gemini VLM)*\n";
   text += "--------------------------------------------------\n";
-  text += "• *Merchant:* " + parsedReceipt.merchant + "\n";
+  text += "• *Merchant:* " + safeMerchant + "\n";
   text += "• *Total Belanja:* *" + formatCurrency(parsedReceipt.amount) + "*\n";
-  text += "• *Kategori:* " + parsedReceipt.category + "\n";
-  text += "• *Wallet:* " + defaultWallet + "\n";
+  text += "• *Kategori:* " + safeCategory + "\n";
+  text += "• *Wallet:* " + safeWallet + "\n";
 
   if (parsedReceipt.items && parsedReceipt.items.length > 0) {
     text += "• *Rincian Item:*\n";
     parsedReceipt.items.slice(0, 5).forEach(it => {
-      text += "  - " + (it.qty ? it.qty + "x " : "") + it.name + " (" + formatCurrency(it.total || it.price) + ")\n";
+      const safeItemName = String(it.name || "Item").replace(/[*_`\[\]]/g, "");
+      text += "  - " + (it.qty ? it.qty + "x " : "") + safeItemName + " (" + formatCurrency(it.total || it.price) + ")\n";
     });
     if (parsedReceipt.items.length > 5) {
       text += "  - _...dan " + (parsedReceipt.items.length - 5) + " item lainnya_\n";
@@ -129,3 +142,4 @@ function formatReceiptVerificationCard(parsedReceipt, fileUrl, walletName) {
 
   return text;
 }
+

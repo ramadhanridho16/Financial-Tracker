@@ -67,6 +67,39 @@ function doGet(e) {
       return createJsonResponse({ ok: true, draft: draft, promptCard: card });
     }
 
+    if (action === "test_vlm_indomaret_simulation") {
+      const simChatId = params.chat_id || 99999999;
+      const mockIndomaret = {
+        merchant: "Indomaret Veteran",
+        amount: 86000,
+        subtotal: 87300,
+        items: [
+          { name: "Le Minerale 600ml", qty: 2, price: 3600, total: 7200 },
+          { name: "Voucher", qty: 1, price: -1300, total: -1300 },
+          { name: "Aquaviva Btl 1600ml", qty: 1, price: 7600, total: 7600 },
+          { name: "Pocari Sweat 500ml", qty: 1, price: 9500, total: 9500 },
+          { name: "Ion Water Btl 500ml", qty: 2, price: 9500, total: 19000 },
+          { name: "Knzlr Sngl Gjng 60g", qty: 2, price: 8900, total: 17800 },
+          { name: "Knzlr Sngl Keju 60g", qty: 1, price: 8900, total: 8900 },
+          { name: "Beng-Beng Maxx 32g", qty: 2, price: 6400, total: 12800 },
+          { name: "Idm Tas Rmh Lngk Sdg", qty: 1, price: 4500, total: 4500 }
+        ],
+        category: "Belanja",
+        date: Utilities.formatDate(new Date(), "Asia/Jakarta", "yyyy-MM-dd"),
+        notes: "Tunai 100.000, Kembali 14.000"
+      };
+      const draft = {
+        receipt: mockIndomaret,
+        fileUrl: "https://drive.google.com/indomaret_receipt.jpg",
+        walletName: CONFIG.DEFAULT.WALLET,
+        chatId: simChatId,
+        timestamp: Date.now()
+      };
+      setPendingReceiptVerification(simChatId, draft);
+      const card = formatReceiptVerificationCard(mockIndomaret, draft.fileUrl, draft.walletName);
+      return createJsonResponse({ ok: true, draft: draft, promptCard: card });
+    }
+
     return createJsonResponse({
       ok: true,
       app: CONFIG.APP.NAME,
@@ -88,16 +121,17 @@ function doGet(e) {
 function doPost(e) {
   try {
     if (!e || !e.postData || !e.postData.contents) {
-      return HtmlService.createHtmlOutput("No post data received");
+      return ContentService.createTextOutput("OK");
     }
 
     const update = JSON.parse(e.postData.contents);
     handleTelegramUpdate(update);
 
-    return HtmlService.createHtmlOutput("OK");
+    return ContentService.createTextOutput("OK");
   } catch (error) {
     logError("Webhook doPost Error: " + error.message);
-    return HtmlService.createHtmlOutput("Error: " + error.message);
+    // Selalu respon OK ke Telegram agar Telegram menghentikan retry loop
+    return ContentService.createTextOutput("OK");
   }
 }
 

@@ -79,7 +79,13 @@ function sendTelegramMessage(chatId, text, options) {
     disable_web_page_preview: true
   }, options || {});
 
-  return callTelegramApi("sendMessage", payload);
+  const res = callTelegramApi("sendMessage", payload);
+  if (!res.ok && res.description && res.description.indexOf("can't parse entities") !== -1) {
+    // Fallback otomatis tanpa parse_mode jika entity markdown tidak valid
+    delete payload.parse_mode;
+    return callTelegramApi("sendMessage", payload);
+  }
+  return res;
 }
 
 /**
