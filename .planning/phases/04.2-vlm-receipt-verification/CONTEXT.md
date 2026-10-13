@@ -63,3 +63,4 @@ Fase ini meng-upgrade pemindaian struk belanja dari OCR karakter terisolasi (Dri
 - Seluruh fungsi memiliki JSDoc.
 - Zero spreadsheet access di luar Repository.
 - Penanganan timeout/error jaringan graceful jika Gemini API tidak dapat dijangkau.
+
