@@ -385,7 +385,7 @@ function handleCheckGeminiKeyCommand() {
   return "🟢 *Gemini API Key Aktif*\n\n" +
     "• *Status:* Tersimpan di Script Properties\n" +
     "• *Key:* `" + masked + "`\n" +
-    "• *Model VLM:* `gemini-2.5-flash`";
+    "• *Model VLM:* `gemini-2.5-flash` / `gemini-2.5-flash-lite`";
 }
 
 

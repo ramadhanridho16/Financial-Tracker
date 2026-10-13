@@ -59,17 +59,25 @@ function callGeminiVisionApi(imageBlob, promptText, modelName) {
     throw new Error("GEMINI_API_KEY_MISSING");
   }
 
-  const primaryModel = modelName || "gemini-2.5-flash";
-  try {
-    return executeGeminiGenerateContent(apiKey, primaryModel, imageBlob, promptText);
-  } catch (err) {
-    // Fallback otomatis ke gemini-1.5-flash jika model 2.5 mengalami limit atau kendala
-    if (primaryModel !== "gemini-1.5-flash" && isRecoverableGeminiError(err)) {
-      logError("Gemini " + primaryModel + " gagal, mencoba fallback ke gemini-1.5-flash: " + err.message);
-      return executeGeminiGenerateContent(apiKey, "gemini-1.5-flash", imageBlob, promptText);
+  // Model cascade: 2.5-flash (primary) -> 2.5-flash-lite -> 2.0-flash
+  const models = modelName ? [modelName] : ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.0-flash"];
+  let lastError = null;
+
+  for (let i = 0; i < models.length; i++) {
+    const currentModel = models[i];
+    try {
+      return executeGeminiGenerateContent(apiKey, currentModel, imageBlob, promptText);
+    } catch (err) {
+      lastError = err;
+      logError("Gemini " + currentModel + " gagal: " + err.message);
+      if (!isRecoverableGeminiError(err)) {
+        throw err;
+      }
+      // Lanjut ke model berikutnya jika 404, 429, atau 503
     }
-    throw err;
   }
+
+  throw lastError || new Error("Semua model Gemini VLM gagal merespons.");
 }
 
 /**
