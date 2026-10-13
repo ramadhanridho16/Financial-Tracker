@@ -68,7 +68,9 @@ function initializeBotCommands() {
   registerBotCommand("/kredit", handleKreditCommand, "Mencatat pinjaman baru via mode percakapan berpemandu", "/kredit");
   registerBotCommand("/kalender", handleCalendarCommand, "Melihat kalender jatuh tempo cicilan bulanan", "/kalender");
   registerBotCommand("/jadwal", handleCalendarCommand, "Alias kalender cicilan", "/jadwal");
-  registerBotCommand("/batal", handleCancelWizardCommand, "Membatalkan sesi percakapan kredit aktif", "/batal");
+  registerBotCommand("/batal", handleCancelWizardCommand, "Membatalkan sesi percakapan aktif", "/batal");
+  registerBotCommand("/setgeminikey", handleSetGeminiKeyCommand, "Memasang Google Gemini API Key untuk fitur VLM", "/setgeminikey <api_key>");
+  registerBotCommand("/cekkey", handleCheckGeminiKeyCommand, "Mengecek status keaktifan Gemini API Key", "/cekkey");
 }
 
 /**
@@ -340,7 +342,51 @@ function handleCalendarCommand(chatId, args) {
  */
 function handleCancelWizardCommand(chatId) {
   clearLoanWizardState(chatId);
+  clearPendingReceiptVerification(chatId);
   return "❌ *Sesi Dibatalkan*\nTidak ada data yang disimpan.";
 }
+
+/**
+ * Handler Perintah: /setgeminikey
+ *
+ * @param {String|Number} chatId
+ * @param {String} args
+ * @returns {String}
+ */
+function handleSetGeminiKeyCommand(chatId, args) {
+  const key = (args || "").trim();
+  if (!key) {
+    return "⚠️ *Format Perintah Salah*\n" +
+      "Gunakan format: `/setgeminikey <API_KEY_ANDA>`\n\n" +
+      "💡 _Dapatkan API Key gratis di:_ aistudio.google.com";
+  }
+
+  saveGeminiApiKey(key);
+  const masked = key.length > 8 ? key.substring(0, 6) + "..." + key.substring(key.length - 4) : "****";
+  return "✅ *Gemini API Key Berhasil Disimpan!*\n\n" +
+    "• *Key:* `" + masked + "`\n" +
+    "• *Model:* `gemini-2.5-flash`\n\n" +
+    "🔍 Fitur Vision-Language Model (VLM) kini aktif untuk pemindaian struk belanja.";
+}
+
+/**
+ * Handler Perintah: /cekkey
+ *
+ * @returns {String}
+ */
+function handleCheckGeminiKeyCommand() {
+  const key = getGeminiApiKey();
+  if (!key) {
+    return "⚠️ *Gemini API Key Belum Terpasang*\n" +
+      "Gunakan `/setgeminikey <API_KEY>` untuk mengaktifkan pemindaian struk VLM.";
+  }
+
+  const masked = key.length > 8 ? key.substring(0, 6) + "..." + key.substring(key.length - 4) : "****";
+  return "🟢 *Gemini API Key Aktif*\n\n" +
+    "• *Status:* Tersimpan di Script Properties\n" +
+    "• *Key:* `" + masked + "`\n" +
+    "• *Model VLM:* `gemini-2.5-flash`";
+}
+
 
 

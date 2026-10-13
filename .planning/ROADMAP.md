@@ -22,7 +22,7 @@
 
 ## Milestone 4: Next Planned Evolutions (Future Backlog)
 - [ ] **Phase 4.1: Split Transactions**: Memecah satu total transaksi menjadi beberapa alokasi kategori/item.
-- [ ] **Phase 4.2: Gemini Vision (VLM) Receipt Parsing & Telegram Verification** `[DISCUSSED / IN PLANNING]` (See [.planning/phases/04.2-vlm-receipt-verification/CONTEXT.md](file:///g:/Spreadsheet%20Tracker/Financial%20Tracker/.planning/phases/04.2-vlm-receipt-verification/CONTEXT.md))
+- [x] **Phase 4.2: Gemini Vision (VLM) Receipt Parsing & Telegram Verification** `[COMPLETED]` (See [.planning/phases/04.2-vlm-receipt-verification/PLAN.md](file:///g:/Spreadsheet%20Tracker/Financial%20Tracker/.planning/phases/04.2-vlm-receipt-verification/PLAN.md))
 - [x] **Phase 4.3: Telegram Bot Messaging Integration & OCR Adapter** `[COMPLETED]` (See [.planning/phases/04.3-bot-messaging-integration/PLAN.md](file:///g:/Spreadsheet%20Tracker/Financial%20Tracker/.planning/phases/04.3-bot-messaging-integration/PLAN.md))
 - [ ] **Phase 4.4: AI Categorization Engine**: Peningkatan akurasi klasifikasi kategori menggunakan Gemini API untuk kalimat ambigu di luar kamus.
 

@@ -44,6 +44,29 @@ function doGet(e) {
       return createJsonResponse({ ok: true, reminders: rem });
     }
 
+    if (action === "test_receipt_simulation") {
+      const simChatId = params.chat_id || 99999999;
+      const mockParsed = {
+        merchant: "Tahan Banting Coffee",
+        amount: 34000,
+        subtotal: 34000,
+        items: [{ name: "Kopi Susu Spanish L", qty: 2, price: 17000, total: 34000 }],
+        category: "Makanan & Minuman",
+        date: Utilities.formatDate(new Date(), "Asia/Jakarta", "yyyy-MM-dd"),
+        notes: "Lunas via Tunai"
+      };
+      const draft = {
+        receipt: mockParsed,
+        fileUrl: "https://drive.google.com/test_receipt.jpg",
+        walletName: CONFIG.DEFAULT.WALLET,
+        chatId: simChatId,
+        timestamp: Date.now()
+      };
+      setPendingReceiptVerification(simChatId, draft);
+      const card = formatReceiptVerificationCard(mockParsed, draft.fileUrl, draft.walletName);
+      return createJsonResponse({ ok: true, draft: draft, promptCard: card });
+    }
+
     return createJsonResponse({
       ok: true,
       app: CONFIG.APP.NAME,

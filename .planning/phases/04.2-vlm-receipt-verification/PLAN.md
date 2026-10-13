@@ -56,3 +56,4 @@ Mengintegrasikan Vision-Language Model (VLM) Google Gemini Flash (`gemini-2.5-fl
 - [ ] Tidak ada akses Spreadsheet di luar Repository.
 - [ ] Tidak ada penulisan data ke `Transactions` sebelum pengguna mengonfirmasi `"YA"` atau memberikan koreksi.
 - [ ] Kasus struk `Total (2) 34.000` berhasil diparsing tepat sebagai Rp 34.000.
+
