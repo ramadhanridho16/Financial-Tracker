@@ -44,6 +44,11 @@ function handleTelegramUpdate(update) {
     return handleTelegramTextMessage(msg.text.trim(), chatId, update);
   }
 
+  sendTelegramMessage(
+    chatId,
+    "Mohon maaf, saat ini tidak tersedia fitur tersebut.\n\n" +
+    "Silakan catat transaksi Anda langsung menggunakan pesan teks (contoh: `Makan siang 35k bca`)."
+  );
   return { status: "unsupported_media" };
 }
 
@@ -151,11 +156,10 @@ function processTelegramTransactionInput(text, chatId) {
 function handleTelegramPhotoMessage(msg, chatId) {
   sendTelegramMessage(
     chatId,
-    "📸 *Pemberitahuan:*\n" +
-    "Fitur pemindaian foto struk sedang dialihkan ke server VPS eksternal.\n\n" +
-    "Silakan catat pengeluaran Anda langsung via pesan teks (contoh: `Makan siang 35k bca`)."
+    "Mohon maaf, saat ini tidak tersedia fitur tersebut.\n\n" +
+    "Silakan catat transaksi Anda langsung menggunakan pesan teks (contoh: `Makan siang 35k bca`)."
   );
-  return { status: "receipt_feature_disabled" };
+  return { status: "feature_not_available" };
 }
 
 /**

@@ -28,6 +28,12 @@ function doGet(e) {
       return createJsonResponse({ ok: true, webhook: info });
     }
 
+    if (action === "set_webhook") {
+      const deployUrl = params.url || (CONFIG.TELEGRAM.API_URL ? ScriptApp.getService().getUrl() : "");
+      const res = setTelegramWebhook(deployUrl);
+      return createJsonResponse({ ok: true, result: res, registeredUrl: deployUrl });
+    }
+
     if (action === "test") {
       const testText = params.text || "Makan siang 25k bca";
       const simResult = simulateTelegramMessage(testText, params.chat_id || 99999999);
