@@ -44,62 +44,6 @@ function doGet(e) {
       return createJsonResponse({ ok: true, reminders: rem });
     }
 
-    if (action === "test_receipt_simulation") {
-      const simChatId = params.chat_id || 99999999;
-      const mockParsed = {
-        merchant: "Tahan Banting Coffee",
-        amount: 34000,
-        subtotal: 34000,
-        items: [{ name: "Kopi Susu Spanish L", qty: 2, price: 17000, total: 34000 }],
-        category: "Makanan & Minuman",
-        date: Utilities.formatDate(new Date(), "Asia/Jakarta", "yyyy-MM-dd"),
-        notes: "Lunas via Tunai"
-      };
-      const draft = {
-        receipt: mockParsed,
-        fileUrl: "https://drive.google.com/test_receipt.jpg",
-        walletName: CONFIG.DEFAULT.WALLET,
-        chatId: simChatId,
-        timestamp: Date.now()
-      };
-      setPendingReceiptVerification(simChatId, draft);
-      const card = formatOcrReceiptVerificationCard(mockParsed, draft.fileUrl, draft.walletName);
-      return createJsonResponse({ ok: true, draft: draft, promptCard: card });
-    }
-
-    if (action === "test_vlm_indomaret_simulation") {
-      const simChatId = params.chat_id || 99999999;
-      const mockIndomaret = {
-        merchant: "Indomaret Veteran",
-        amount: 86000,
-        subtotal: 87300,
-        items: [
-          { name: "Le Minerale 600ml", qty: 2, price: 3600, total: 7200 },
-          { name: "Voucher", qty: 1, price: -1300, total: -1300 },
-          { name: "Aquaviva Btl 1600ml", qty: 1, price: 7600, total: 7600 },
-          { name: "Pocari Sweat 500ml", qty: 1, price: 9500, total: 9500 },
-          { name: "Ion Water Btl 500ml", qty: 2, price: 9500, total: 19000 },
-          { name: "Knzlr Sngl Gjng 60g", qty: 2, price: 8900, total: 17800 },
-          { name: "Knzlr Sngl Keju 60g", qty: 1, price: 8900, total: 8900 },
-          { name: "Beng-Beng Maxx 32g", qty: 2, price: 6400, total: 12800 },
-          { name: "Idm Tas Rmh Lngk Sdg", qty: 1, price: 4500, total: 4500 }
-        ],
-        category: "Belanja",
-        date: Utilities.formatDate(new Date(), "Asia/Jakarta", "yyyy-MM-dd"),
-        notes: "Tunai 100.000, Kembali 14.000"
-      };
-      const draft = {
-        receipt: mockIndomaret,
-        fileUrl: "https://drive.google.com/indomaret_receipt.jpg",
-        walletName: CONFIG.DEFAULT.WALLET,
-        chatId: simChatId,
-        timestamp: Date.now()
-      };
-      setPendingReceiptVerification(simChatId, draft);
-      const card = formatReceiptVerificationCard(mockIndomaret, draft.fileUrl, draft.walletName);
-      return createJsonResponse({ ok: true, draft: draft, promptCard: card });
-    }
-
     return createJsonResponse({
       ok: true,
       app: CONFIG.APP.NAME,
@@ -174,16 +118,3 @@ function simulateTelegramMessage(text, chatId) {
 
   return handleTelegramUpdate(mockUpdate);
 }
-
-/**
- * Menyimulasikan pemrosesan struk gambar dari file ID Google Drive.
- *
- * @param {String} fileId
- * @returns {Object}
- */
-function simulateReceiptOcrFromFile(fileId) {
-  const file = DriveApp.getFileById(fileId);
-  const blob = file.getBlob();
-  return processReceiptImage(blob);
-}
-

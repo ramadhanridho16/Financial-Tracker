@@ -81,14 +81,6 @@ function isTelegramUserAuthorized(userId) {
  * @returns {Object}
  */
 function handleTelegramTextMessage(text, chatId, update) {
-  const pendingReceipt = getPendingReceiptVerification(chatId);
-  if (pendingReceipt) {
-    const handledReceipt = handleReceiptVerificationResponse(text, chatId, pendingReceipt);
-    if (handledReceipt.handled) {
-      return handledReceipt;
-    }
-  }
-
   if (isLoanWizardActive(chatId)) {
     if (text.startsWith("/") && text.toLowerCase() !== "/batal") {
       clearLoanWizardState(chatId);
@@ -150,215 +142,20 @@ function processTelegramTransactionInput(text, chatId) {
 }
 
 /**
- * Menangani pesan foto struk belanja menggunakan Gemini VLM.
+ * Menangani pesan foto Telegram saat fitur struk dialihkan.
  *
  * @param {Object} msg
  * @param {String|Number} chatId
  * @returns {Object}
  */
 function handleTelegramPhotoMessage(msg, chatId) {
-  try {
-    const photo = msg.photo[msg.photo.length - 1];
-    const fileInfo = getTelegramFile(photo.file_id);
-
-    if (!fileInfo || !fileInfo.result || !fileInfo.result.file_path) {
-      throw new Error("Gagal mengambil file foto dari Telegram.");
-    }
-
-    sendTelegramMessage(chatId, "🔍 _Menganalisis struk belanja dengan OCR..._");
-    const blob = downloadTelegramFileBlob(fileInfo.result.file_path);
-
-    let driveFileUrl = "";
-    try {
-      const driveFile = saveReceiptImageToDrive(blob);
-      driveFileUrl = driveFile.fileUrl;
-    } catch (driveErr) {
-      logError("Gagal menyimpan gambar ke Drive (melanjutkan OCR): " + driveErr.message);
-    }
-
-    const parsedReceipt = parseReceiptImageWithOcr(blob);
-    const draft = {
-      receipt: parsedReceipt,
-      fileUrl: driveFileUrl,
-      walletName: CONFIG.DEFAULT.WALLET,
-      chatId: chatId,
-      timestamp: Date.now()
-    };
-
-    setPendingReceiptVerification(chatId, draft);
-    const cardMsg = formatOcrReceiptVerificationCard(parsedReceipt, driveFileUrl, draft.walletName);
-    sendTelegramMessage(chatId, cardMsg);
-
-    return { status: "receipt_verification_pending", amount: parsedReceipt.amount };
-  } catch (err) {
-    logError("Error handleTelegramPhotoMessage: " + err.message);
-    const safeErrorMsg = String(err.message || "Terjadi kesalahan internal").replace(/[*_`\[\]]/g, "");
-    sendTelegramMessage(chatId, "⚠️ Gagal Menganalisis Struk: " + safeErrorMsg + "\n\n💡 _Tips: Pastikan foto struk terlihat jelas dan cukup cahaya._");
-    return { status: "ocr_error", error: err.message };
-  }
-}
-
-/**
- * Mengambil draft struk yang menunggu verifikasi dari cache.
- *
- * @param {String|Number} chatId
- * @returns {Object|null}
- */
-function getPendingReceiptVerification(chatId) {
-  const cache = CacheService.getScriptCache();
-  const raw = cache.get("pending_receipt_" + chatId);
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw);
-  } catch (e) {
-    return null;
-  }
-}
-
-/**
- * Menyimpan draft struk ke cache untuk verifikasi (TTL 15 menit).
- *
- * @param {String|Number} chatId
- * @param {Object} draft
- */
-function setPendingReceiptVerification(chatId, draft) {
-  const cache = CacheService.getScriptCache();
-  cache.put("pending_receipt_" + chatId, JSON.stringify(draft), 900);
-}
-
-/**
- * Menghapus draft struk dari cache.
- *
- * @param {String|Number} chatId
- */
-function clearPendingReceiptVerification(chatId) {
-  const cache = CacheService.getScriptCache();
-  cache.remove("pending_receipt_" + chatId);
-}
-
-/**
- * Memproses respons verifikasi pengguna untuk draft struk belanja.
- *
- * @param {String} text
- * @param {String|Number} chatId
- * @param {Object} draft
- * @returns {Object}
- */
-function handleReceiptVerificationResponse(text, chatId, draft) {
-  const upper = text.trim().toUpperCase();
-
-  if (upper === "YA" || upper === "Y") {
-    return confirmAndSaveReceiptTransaction(draft, chatId);
-  }
-
-  if (upper === "TIDAK" || upper === "BATAL" || upper === "/BATAL") {
-    clearPendingReceiptVerification(chatId);
-    sendTelegramMessage(chatId, "❌ *Pencatatan struk dibatalkan.*\nData tidak disimpan ke spreadsheet.");
-    return { handled: true, status: "receipt_cancelled" };
-  }
-
-  if (text.startsWith("/")) {
-    clearPendingReceiptVerification(chatId);
-    return { handled: false };
-  }
-
-  return correctAndSaveReceiptTransaction(draft, text.trim(), chatId);
-}
-
-/**
- * Menyimpan transaksi struk yang telah dikonfirmasi 'YA'.
- *
- * @param {Object} draft
- * @param {String|Number} chatId
- * @returns {Object}
- */
-function confirmAndSaveReceiptTransaction(draft, chatId) {
-  clearPendingReceiptVerification(chatId);
-
-  const tx = {
-    date: draft.receipt.date ? new Date(draft.receipt.date) : new Date(),
-    transactionType: CONFIG.TRANSACTION_TYPE.EXPENSE,
-    walletName: draft.walletName || CONFIG.DEFAULT.WALLET,
-    category: draft.receipt.category || CONFIG.DEFAULT.CATEGORY,
-    description: "Belanja di " + draft.receipt.merchant,
-    amount: draft.receipt.amount,
-    note: "OCR Receipt: " + (draft.fileUrl || "")
-  };
-
-  saveTransaction(tx);
-  syncInventoryPurchases([tx]);
-  updateWalletBalances();
-  refreshDashboard();
-
-  const reply = "✅ *Struk Belanja Berhasil Dicatat!*\n\n" +
-    "• *Merchant:* " + draft.receipt.merchant + "\n" +
-    "• *Nominal:* " + formatCurrency(tx.amount) + "\n" +
-    "• *Kategori:* " + tx.category + "\n" +
-    "• *Wallet:* " + tx.walletName + "\n" +
-    "• *Bukti File:* [Buka Gambar](" + draft.fileUrl + ")\n\n" +
-    "📊 _Dashboard & Saldo telah diperbarui._";
-
-  sendTelegramMessage(chatId, reply);
-  return { handled: true, status: "receipt_saved", amount: tx.amount };
-}
-
-/**
- * Memperbarui draft struk dengan koreksi teks pengguna lalu menyimpannya.
- *
- * @param {Object} draft
- * @param {String} textCorrection
- * @param {String|Number} chatId
- * @returns {Object}
- */
-function correctAndSaveReceiptTransaction(draft, textCorrection, chatId) {
-  clearPendingReceiptVerification(chatId);
-
-  try {
-    const normalized = normalizeTransactionInput(textCorrection);
-    const parsed = parseTransaction({
-      date: new Date(),
-      input: normalized,
-      sourceInput: textCorrection,
-      note: "VLM Corrected: " + (draft.fileUrl || "")
-    });
-
-    let customDesc = "Belanja di " + draft.receipt.merchant;
-    if (parsed.description && parsed.description.trim().length > 0) {
-      customDesc = parsed.description;
-    } else if (textCorrection && isNaN(parseNumber(textCorrection)) && textCorrection.length > 2) {
-      customDesc = textCorrection;
-    }
-
-    const finalTx = {
-      date: draft.receipt.date ? new Date(draft.receipt.date) : new Date(),
-      transactionType: CONFIG.TRANSACTION_TYPE.EXPENSE,
-      walletName: parsed.walletName || draft.walletName || CONFIG.DEFAULT.WALLET,
-      category: parsed.category !== CONFIG.DEFAULT.CATEGORY ? parsed.category : draft.receipt.category,
-      description: customDesc,
-      amount: parsed.amount > 0 ? parsed.amount : draft.receipt.amount,
-      note: "OCR Receipt: " + (draft.fileUrl || "")
-    };
-
-    saveTransaction(finalTx);
-    syncInventoryPurchases([finalTx]);
-    updateWalletBalances();
-    refreshDashboard();
-
-    const reply = "✅ *Struk Dicatat dengan Keterangan & Nominal Anda!*\n\n" +
-      "• *Merchant:* " + draft.receipt.merchant + "\n" +
-      "• *Keterangan:* " + finalTx.description + "\n" +
-      "• *Nominal:* *" + formatCurrency(finalTx.amount) + "*\n" +
-      "• *Kategori:* " + finalTx.category + "\n" +
-      "• *Wallet:* " + finalTx.walletName + "\n" +
-      "• *Bukti File:* [Buka Gambar](" + draft.fileUrl + ")\n\n" +
-      "📊 _Dashboard & Saldo telah diperbarui._";
-
-    sendTelegramMessage(chatId, reply);
-    return { handled: true, status: "receipt_saved_with_correction", amount: finalTx.amount };
-  } catch (err) {
-    sendTelegramMessage(chatId, "⚠️ *Koreksi gagal diproses:*\n" + err.message);
-    return { handled: true, status: "correction_failed" };
-  }
+  sendTelegramMessage(
+    chatId,
+    "📸 *Pemberitahuan:*\n" +
+    "Fitur pemindaian foto struk sedang dialihkan ke server VPS eksternal.\n\n" +
+    "Silakan catat pengeluaran Anda langsung via pesan teks (contoh: `Makan siang 35k bca`)."
+  );
+  return { status: "receipt_feature_disabled" };
 }
 
 /**
@@ -399,17 +196,17 @@ function formatTelegramTransactionReceipt(transactions) {
  */
 function getTelegramHelpMessage() {
   return "🤖 *Financial Tracker Bot Assistant*\n\n" +
-    "Kirim kalimat transaksi apa saja secara alami atau kirimkan foto struk kasir:\n\n" +
+    "Kirim kalimat transaksi apa saja secara alami via pesan teks:\n\n" +
     "📝 *Contoh Transaksi:*\n" +
     "• `Makan siang 35k bca`\n" +
     "• `Beli bensin 50rb bri`\n" +
     "• `Gaji bulanan 10jt mandiri`\n" +
     "• `Transfer bca ke jago 200rb`\n" +
     "• `Beli kopi 25rb, bayar parkir 5rb bri`\n\n" +
-    "📸 *Struk Belanja:* Cukup kirimkan foto struk, OCR akan mengekstrak totalnya otomatis.\n\n" +
     "⚡ *Perintah Cepat:*\n" +
     "• `/saldo` — Cek saldo seluruh wallet\n" +
     "• `/ringkasan` — Ringkasan konsumsi bulan ini\n" +
+    "• `/pinjaman` — Status cicilan/pinjaman aktif\n" +
     "• `/ping` — Uji koneksi bot";
 }
 
