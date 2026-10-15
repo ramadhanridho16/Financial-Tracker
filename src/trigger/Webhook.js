@@ -71,17 +71,17 @@ function doGet(e) {
 function doPost(e) {
   try {
     if (!e || !e.postData || !e.postData.contents) {
-      return ContentService.createTextOutput("OK");
+      return HtmlService.createHtmlOutput("No post data received");
     }
 
     const update = JSON.parse(e.postData.contents);
     handleTelegramUpdate(update);
 
-    return ContentService.createTextOutput("OK");
+    return HtmlService.createHtmlOutput("OK");
   } catch (error) {
     logError("Webhook doPost Error: " + error.message);
     // Selalu respon OK ke Telegram agar Telegram menghentikan retry loop
-    return ContentService.createTextOutput("OK");
+    return HtmlService.createHtmlOutput("Error: " + error.message);
   }
 }
 
