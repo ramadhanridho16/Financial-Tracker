@@ -165,7 +165,7 @@ function handleTelegramPhotoMessage(msg, chatId) {
       throw new Error("Gagal mengambil file foto dari Telegram.");
     }
 
-    sendTelegramMessage(chatId, "🔍 _Menganalisis struk belanja dengan Gemini VLM..._");
+    sendTelegramMessage(chatId, "🔍 _Menganalisis struk belanja dengan OCR..._");
     const blob = downloadTelegramFileBlob(fileInfo.result.file_path);
 
     let driveFileUrl = "";
@@ -173,19 +173,10 @@ function handleTelegramPhotoMessage(msg, chatId) {
       const driveFile = saveReceiptImageToDrive(blob);
       driveFileUrl = driveFile.fileUrl;
     } catch (driveErr) {
-      logError("Gagal menyimpan gambar ke Drive (melanjutkan VLM): " + driveErr.message);
+      logError("Gagal menyimpan gambar ke Drive (melanjutkan OCR): " + driveErr.message);
     }
 
-    const apiKey = getGeminiApiKey();
-    if (!apiKey) {
-      sendTelegramMessage(chatId, "⚠️ *Gemini API Key Belum Terpasang*\n" +
-        "Untuk membaca struk kasir cerdas (VLM), pasang API Key Anda terlebih dahulu:\n" +
-        "`/setgeminikey <API_KEY_ANDA>`\n\n" +
-        "_Dapatkan API Key gratis di:_ aistudio.google.com");
-      return { status: "missing_gemini_key" };
-    }
-
-    const parsedReceipt = parseReceiptImageWithVlm(blob);
+    const parsedReceipt = parseReceiptImageWithOcr(blob);
     const draft = {
       receipt: parsedReceipt,
       fileUrl: driveFileUrl,
@@ -195,15 +186,15 @@ function handleTelegramPhotoMessage(msg, chatId) {
     };
 
     setPendingReceiptVerification(chatId, draft);
-    const cardMsg = formatReceiptVerificationCard(parsedReceipt, driveFileUrl, draft.walletName);
+    const cardMsg = formatOcrReceiptVerificationCard(parsedReceipt, driveFileUrl, draft.walletName);
     sendTelegramMessage(chatId, cardMsg);
 
     return { status: "receipt_verification_pending", amount: parsedReceipt.amount };
   } catch (err) {
     logError("Error handleTelegramPhotoMessage: " + err.message);
     const safeErrorMsg = String(err.message || "Terjadi kesalahan internal").replace(/[*_`\[\]]/g, "");
-    sendTelegramMessage(chatId, "⚠️ Gagal Menganalisis Struk: " + safeErrorMsg);
-    return { status: "vlm_error", error: err.message };
+    sendTelegramMessage(chatId, "⚠️ Gagal Menganalisis Struk: " + safeErrorMsg + "\n\n💡 _Tips: Pastikan foto struk terlihat jelas dan cukup cahaya._");
+    return { status: "ocr_error", error: err.message };
   }
 }
 
@@ -291,7 +282,7 @@ function confirmAndSaveReceiptTransaction(draft, chatId) {
     category: draft.receipt.category || CONFIG.DEFAULT.CATEGORY,
     description: "Belanja di " + draft.receipt.merchant,
     amount: draft.receipt.amount,
-    note: "VLM Receipt: " + (draft.fileUrl || "")
+    note: "OCR Receipt: " + (draft.fileUrl || "")
   };
 
   saveTransaction(tx);
@@ -331,14 +322,21 @@ function correctAndSaveReceiptTransaction(draft, textCorrection, chatId) {
       note: "VLM Corrected: " + (draft.fileUrl || "")
     });
 
+    let customDesc = "Belanja di " + draft.receipt.merchant;
+    if (parsed.description && parsed.description.trim().length > 0) {
+      customDesc = parsed.description;
+    } else if (textCorrection && isNaN(parseNumber(textCorrection)) && textCorrection.length > 2) {
+      customDesc = textCorrection;
+    }
+
     const finalTx = {
       date: draft.receipt.date ? new Date(draft.receipt.date) : new Date(),
       transactionType: CONFIG.TRANSACTION_TYPE.EXPENSE,
       walletName: parsed.walletName || draft.walletName || CONFIG.DEFAULT.WALLET,
       category: parsed.category !== CONFIG.DEFAULT.CATEGORY ? parsed.category : draft.receipt.category,
-      description: parsed.description ? parsed.description + " (" + draft.receipt.merchant + ")" : "Belanja di " + draft.receipt.merchant,
+      description: customDesc,
       amount: parsed.amount > 0 ? parsed.amount : draft.receipt.amount,
-      note: "VLM Corrected: " + (draft.fileUrl || "")
+      note: "OCR Receipt: " + (draft.fileUrl || "")
     };
 
     saveTransaction(finalTx);
@@ -346,9 +344,10 @@ function correctAndSaveReceiptTransaction(draft, textCorrection, chatId) {
     updateWalletBalances();
     refreshDashboard();
 
-    const reply = "✅ *Struk Dicatat dengan Koreksi Anda!*\n\n" +
+    const reply = "✅ *Struk Dicatat dengan Keterangan & Nominal Anda!*\n\n" +
       "• *Merchant:* " + draft.receipt.merchant + "\n" +
-      "• *Nominal Akhir:* *" + formatCurrency(finalTx.amount) + "*\n" +
+      "• *Keterangan:* " + finalTx.description + "\n" +
+      "• *Nominal:* *" + formatCurrency(finalTx.amount) + "*\n" +
       "• *Kategori:* " + finalTx.category + "\n" +
       "• *Wallet:* " + finalTx.walletName + "\n" +
       "• *Bukti File:* [Buka Gambar](" + draft.fileUrl + ")\n\n" +

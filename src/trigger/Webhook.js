@@ -63,7 +63,7 @@ function doGet(e) {
         timestamp: Date.now()
       };
       setPendingReceiptVerification(simChatId, draft);
-      const card = formatReceiptVerificationCard(mockParsed, draft.fileUrl, draft.walletName);
+      const card = formatOcrReceiptVerificationCard(mockParsed, draft.fileUrl, draft.walletName);
       return createJsonResponse({ ok: true, draft: draft, promptCard: card });
     }
 
