@@ -61,6 +61,7 @@ const CONFIG = Object.freeze({
     // Spreadsheet ID diambil dari URL spreadsheet yang digunakan untuk menyimpan data inventaris rumah tangga. Pastikan untuk mengganti ID ini dengan ID spreadsheet Anda sendiri.
     SPREADSHEET_ID: "1agLINpK-XyW-_hG30XX7-Ce_6KSw90sNK_7IFjscGRU",
     SHEETS: {
+      MASTER_BARANG: "Master_Barang",
       PRODUCT_MASTER: "Product_Master",
       INVENTORY: "Inventory",
       TRANSACTION: "Transaction"
@@ -69,16 +70,20 @@ const CONFIG = Object.freeze({
     HEADERS: {
       TRANSACTION_ID: ["Transaction ID", "TransactionID"],
       PRODUCT_ID: ["Product ID", "ProductID"],
-      PRODUCT_NAME: ["Product Name", "Nama Produk", "Barang"],
-      PRODUCT_UNIT: ["Unit", "Satuan"],
+      PRODUCT_NAME: ["Nama Barang", "Product Name", "Nama Produk", "Barang"],
+      ALIAS: ["Alias", "Aliases", "Kata Kunci"],
+      CATEGORY: ["Kategori", "Category"],
+      PRODUCT_UNIT: ["Satuan", "Unit"],
       PRODUCT_ACTIVE: ["Active", "Aktif"],
+      MINIMUM_STOCK: ["Stok Minimum", "Minimum Stock", "Min Stock"],
       STOCK: ["Current Stock", "Stock", "Stok", "Jumlah"],
       TYPE: ["Type", "Jenis"],
       QUANTITY: ["Quantity", "Qty", "Jumlah"],
       DATE: ["Date", "Tanggal"],
       UNIT_PRICE: ["Harga Satuan", "Unit Price"],
       TOTAL: ["Total"],
-      NOTE: ["Note", "Notes", "Catatan"]
+      SUPPLIER: ["Supplier/Toko", "Supplier", "Toko"],
+      NOTE: ["Catatan", "Note", "Notes"]
     }
   },
 

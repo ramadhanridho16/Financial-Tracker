@@ -125,12 +125,12 @@ function processTelegramTransactionInput(text, chatId) {
     }));
 
     transactions.forEach(saveTransaction);
-    syncInventoryPurchases(transactions);
+    const syncedInventoryItems = syncInventoryPurchases(transactions);
     updateWalletBalances();
     refreshDashboard();
 
     const newlyPaidLoans = syncAllLoansSettlement();
-    let reply = formatTelegramTransactionReceipt(transactions);
+    let reply = formatTelegramTransactionReceipt(transactions, syncedInventoryItems);
 
     if (newlyPaidLoans && newlyPaidLoans.length > 0) {
       newlyPaidLoans.forEach(l => {
@@ -168,7 +168,7 @@ function handleTelegramPhotoMessage(msg, chatId) {
  * @param {Array<Object>} transactions
  * @returns {String}
  */
-function formatTelegramTransactionReceipt(transactions) {
+function formatTelegramTransactionReceipt(transactions, syncedInventoryItems) {
   let reply = "✅ *Transaksi Berhasil Dicatat!*\n\n";
 
   transactions.forEach((t, i) => {
@@ -179,6 +179,15 @@ function formatTelegramTransactionReceipt(transactions) {
       "• *Wallet:* " + t.walletName + (t.targetWalletName ? " ➔ " + t.targetWalletName : "") + "\n" +
       "• *Keterangan:* " + (t.description || "-") + "\n\n";
   });
+
+  if (syncedInventoryItems && syncedInventoryItems.length > 0) {
+    reply += "📦 *Tersinkron ke Home Inventory:*\n";
+    syncedInventoryItems.forEach(item => {
+      reply += "• *" + item.product.productName + "* (+" + item.quantity + " " + item.product.unit + ")" +
+        " ➔ Stok: *" + item.newStock + " " + item.product.unit + "*\n";
+    });
+    reply += "\n";
+  }
 
   const wallet = getWalletByName(transactions[0].walletName);
   if (wallet) {

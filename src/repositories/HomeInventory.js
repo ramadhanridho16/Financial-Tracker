@@ -10,27 +10,29 @@
  * @returns {GoogleAppsScript.Spreadsheet.Spreadsheet}
  */
 function getHomeInventorySpreadsheet() {
-
   return SpreadsheetApp.openById(CONFIG.HOME_INVENTORY.SPREADSHEET_ID);
-
 }
 
 /**
  * Mengambil sheet Home Inventory berdasarkan konfigurasi.
+ * Mendukung fallback sheet Master_Barang -> Product_Master.
  *
  * @param {String} sheetName
  * @returns {GoogleAppsScript.Spreadsheet.Sheet}
  */
 function getHomeInventorySheet(sheetName) {
+  const spreadsheet = getHomeInventorySpreadsheet();
+  let sheet = spreadsheet.getSheetByName(sheetName);
 
-  const sheet = getHomeInventorySpreadsheet().getSheetByName(sheetName);
+  if (!sheet && (sheetName === "Master_Barang" || sheetName === "Product_Master")) {
+    sheet = spreadsheet.getSheetByName("Master_Barang") || spreadsheet.getSheetByName("Product_Master");
+  }
 
   if (!sheet) {
     throw new Error("Sheet Home Inventory tidak ditemukan: " + sheetName);
   }
 
   return sheet;
-
 }
 
 /**
@@ -39,17 +41,18 @@ function getHomeInventorySheet(sheetName) {
  * @returns {Object}
  */
 function getHomeInventoryConnectionDetails() {
-
   const spreadsheet = getHomeInventorySpreadsheet();
   const sheets = CONFIG.HOME_INVENTORY.SHEETS;
+  const masterSheetName = spreadsheet.getSheetByName(sheets.MASTER_BARANG || "Master_Barang") ?
+    (sheets.MASTER_BARANG || "Master_Barang") : sheets.PRODUCT_MASTER;
 
   return {
     spreadsheetName: spreadsheet.getName(),
-    productMasterHeaders: getHomeInventorySheetHeaders(sheets.PRODUCT_MASTER),
+    masterSheetName: masterSheetName,
+    productMasterHeaders: getHomeInventorySheetHeaders(masterSheetName),
     inventoryHeaders: getHomeInventorySheetHeaders(sheets.INVENTORY),
     transactionHeaders: getHomeInventorySheetHeaders(sheets.TRANSACTION)
   };
-
 }
 
 /**
@@ -59,102 +62,92 @@ function getHomeInventoryConnectionDetails() {
  * @returns {Array<String>}
  */
 function getHomeInventorySheetHeaders(sheetName) {
-
   const sheet = getHomeInventorySheet(sheetName);
   return sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-
 }
 
 /**
- * Mencari produk aktif yang namanya muncul pada input transaksi.
+ * Mencari produk aktif yang namanya atau aliasnya muncul pada input teks.
  *
  * @param {String} input
  * @returns {Object|null}
  */
 function findHomeInventoryProduct(input) {
+  if (!input) return null;
 
-  const sheet = getHomeInventorySheet(
-    CONFIG.HOME_INVENTORY.SHEETS.PRODUCT_MASTER
-  );
+  const masterSheetName = CONFIG.HOME_INVENTORY.SHEETS.MASTER_BARANG || "Master_Barang";
+  const sheet = getHomeInventorySheet(masterSheetName);
   const values = sheet.getDataRange().getValues();
+  if (values.length <= 1) return null;
+
   const headers = values.shift();
   const columns = getHomeInventoryProductColumns(headers);
 
-  return values
+  const products = values
     .map((row, index) => createHomeInventoryProduct(row, columns, index + 2))
-    .filter(product => product.productId && product.active)
-    .sort((first, second) => second.productName.length - first.productName.length)
-    .find(product => containsProductName(input, product.productName)) || null;
+    .filter(product => product.productId && product.active);
 
-}
+  // Buat daftar kandidat pencocokan (nama barang + seluruh alias)
+  const candidates = [];
+  products.forEach(product => {
+    // Tambahkan nama produk
+    if (product.productName) {
+      candidates.push({
+        term: String(product.productName).trim(),
+        product: product
+      });
+    }
+    // Tambahkan masing-masing alias jika ada
+    if (product.aliases && Array.isArray(product.aliases)) {
+      product.aliases.forEach(alias => {
+        if (alias && alias.length > 0) {
+          candidates.push({
+            term: alias,
+            product: product
+          });
+        }
+      });
+    }
+  });
 
-/**
- * Menambah stok produk pada sheet Inventory.
- *
- * @param {Object} product
- * @param {Number} quantity
- * @returns {Number}
- */
-function addHomeInventoryStock(product, quantity) {
+  // Urutkan kandidat berdasarkan panjang term terpanjang (longest match wins)
+  candidates.sort((a, b) => b.term.length - a.term.length);
 
-  const sheet = getHomeInventorySheet(CONFIG.HOME_INVENTORY.SHEETS.INVENTORY);
-  const values = sheet.getDataRange().getValues();
-  const headers = values[0] || [];
-  const columns = getHomeInventoryStockColumns(headers);
-  const rowIndex = findHomeInventoryStockRow(values, columns.productId, product.productId);
+  const normalizedInput = normalizeText(input);
 
-  if (rowIndex === -1) {
-    return appendHomeInventoryStock(sheet, headers, columns, product, quantity);
+  for (let i = 0; i < candidates.length; i++) {
+    const candidate = candidates[i];
+    const escapedTerm = normalizeText(candidate.term).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const pattern = new RegExp("(?:^|[^a-zA-Z0-9])" + escapedTerm + "(?:$|[^a-zA-Z0-9])", "i");
+    if (pattern.test(normalizedInput)) {
+      // Pasang matchedTerm ke product untuk keperluan parsing kuantitas
+      return Object.assign({}, candidate.product, { matchedTerm: candidate.term });
+    }
   }
 
-  const currentStock = Number(values[rowIndex][columns.stock] || 0);
-  const newStock = currentStock + quantity;
-  sheet.getRange(rowIndex + 1, columns.stock + 1).setValue(newStock);
-  return newStock;
-
+  return null;
 }
 
 /**
- * Mencatat pembelian barang ke riwayat Home Inventory.
- *
- * @param {Object} purchase
- * @returns {Number}
- */
-function saveHomeInventoryPurchase(purchase) {
-
-  const sheet = getHomeInventorySheet(
-    CONFIG.HOME_INVENTORY.SHEETS.TRANSACTION
-  );
-  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-  const record = Object.assign({}, purchase, {
-    inventoryTransactionId: Utilities.getUuid()
-  });
-  const row = headers.map(header => getHomeInventoryPurchaseValue(header, record));
-
-  sheet.appendRow(row);
-  return sheet.getLastRow();
-
-}
-
-/**
- * Mengambil indeks kolom Product Master.
+ * Mengambil indeks kolom Master Barang.
  *
  * @param {Array<String>} headers
  * @returns {Object}
  */
 function getHomeInventoryProductColumns(headers) {
-
   return {
     productId: findHomeInventoryHeader(headers, CONFIG.HOME_INVENTORY.HEADERS.PRODUCT_ID),
     productName: findHomeInventoryHeader(headers, CONFIG.HOME_INVENTORY.HEADERS.PRODUCT_NAME),
+    alias: findHomeInventoryHeader(headers, CONFIG.HOME_INVENTORY.HEADERS.ALIAS || ["Alias", "Aliases"]),
+    category: findHomeInventoryHeader(headers, CONFIG.HOME_INVENTORY.HEADERS.CATEGORY || ["Kategori", "Category"]),
     unit: findHomeInventoryHeader(headers, CONFIG.HOME_INVENTORY.HEADERS.PRODUCT_UNIT),
+    minimumStock: findHomeInventoryHeader(headers, CONFIG.HOME_INVENTORY.HEADERS.MINIMUM_STOCK || ["Stok Minimum", "Minimum Stock"]),
     active: findHomeInventoryHeader(headers, CONFIG.HOME_INVENTORY.HEADERS.PRODUCT_ACTIVE)
   };
-
 }
 
 /**
- * Membentuk data produk dari satu baris Product Master.
+ * Membentuk data produk dari satu baris Master Barang.
  *
  * @param {Array<*>} row
  * @param {Object} columns
@@ -162,30 +155,101 @@ function getHomeInventoryProductColumns(headers) {
  * @returns {Object}
  */
 function createHomeInventoryProduct(row, columns, rowNumber) {
+  const rawAlias = getHomeInventoryCell(row, columns.alias);
+  const aliases = typeof rawAlias === "string"
+    ? rawAlias.split(",").map(a => a.trim()).filter(Boolean)
+    : [];
+
+  const rawMinStock = getHomeInventoryCell(row, columns.minimumStock);
+  const minimumStock = Number(rawMinStock) || 0;
 
   return {
-    productId: getHomeInventoryCell(row, columns.productId),
-    productName: getHomeInventoryCell(row, columns.productName),
-    unit: getHomeInventoryCell(row, columns.unit),
+    productId: String(getHomeInventoryCell(row, columns.productId)),
+    productName: String(getHomeInventoryCell(row, columns.productName)),
+    aliases: aliases,
+    category: String(getHomeInventoryCell(row, columns.category) || ""),
+    unit: String(getHomeInventoryCell(row, columns.unit) || ""),
+    minimumStock: minimumStock,
     active: isHomeInventoryProductActive(getHomeInventoryCell(row, columns.active)),
     rowNumber: rowNumber
   };
-
 }
 
 /**
- * Mengambil indeks kolom stok yang diperlukan.
+ * Memperbarui stok dan status produk pada sheet Inventory Home Inventory.
+ *
+ * @param {Object} product
+ * @param {Number} quantity
+ * @returns {{ newStock: Number, status: String }}
+ */
+function syncHomeInventoryStock(product, quantity) {
+  const sheet = getHomeInventorySheet(CONFIG.HOME_INVENTORY.SHEETS.INVENTORY);
+  const values = sheet.getDataRange().getValues();
+  const headers = values[0] || [];
+  const columns = getHomeInventoryStockColumns(headers);
+  const rowIndex = findHomeInventoryStockRow(values, columns.productId, product.productId);
+
+  let currentStock = 0;
+  if (rowIndex !== -1) {
+    currentStock = Number(values[rowIndex][columns.stock] || 0);
+  }
+
+  const newStock = currentStock + quantity;
+  const status = deriveHomeInventoryStatus(newStock, product.minimumStock);
+  const now = new Date();
+
+  if (rowIndex === -1) {
+    // Baris belum ada di Inventory -> append row baru
+    appendHomeInventoryStock(sheet, headers, columns, product, newStock, status, now);
+  } else {
+    // Update baris yang sudah ada
+    const targetRow = rowIndex + 1;
+    sheet.getRange(targetRow, columns.stock + 1).setValue(newStock);
+    if (columns.unit >= 0 && product.unit) {
+      sheet.getRange(targetRow, columns.unit + 1).setValue(product.unit);
+    }
+    if (columns.lastUpdate >= 0) {
+      sheet.getRange(targetRow, columns.lastUpdate + 1).setValue(now);
+    }
+    if (columns.status >= 0) {
+      sheet.getRange(targetRow, columns.status + 1).setValue(status);
+    }
+  }
+
+  return { newStock: newStock, status: status };
+}
+
+/**
+ * Menurunkan status stok sesuai aturan Home Inventory.
+ *
+ * @param {Number} currentStock
+ * @param {Number} minimumStock
+ * @returns {String}
+ */
+function deriveHomeInventoryStatus(currentStock, minimumStock) {
+  if (currentStock <= 0) {
+    return "OUT_OF_STOCK";
+  }
+  if (minimumStock && currentStock <= minimumStock) {
+    return "LOW_STOCK";
+  }
+  return "IN_STOCK";
+}
+
+/**
+ * Mengambil indeks kolom stok yang diperlukan pada Inventory.
  *
  * @param {Array<String>} headers
  * @returns {Object}
  */
 function getHomeInventoryStockColumns(headers) {
-
   const columns = {
     productId: findHomeInventoryHeader(headers, CONFIG.HOME_INVENTORY.HEADERS.PRODUCT_ID),
     productName: findHomeInventoryHeader(headers, CONFIG.HOME_INVENTORY.HEADERS.PRODUCT_NAME),
     stock: findHomeInventoryHeader(headers, CONFIG.HOME_INVENTORY.HEADERS.STOCK),
-    unit: findHomeInventoryHeader(headers, CONFIG.HOME_INVENTORY.HEADERS.PRODUCT_UNIT)
+    unit: findHomeInventoryHeader(headers, CONFIG.HOME_INVENTORY.HEADERS.PRODUCT_UNIT),
+    lastUpdate: findHomeInventoryHeader(headers, ["Last Update", "Terakhir Diperbarui", "Update"]),
+    status: findHomeInventoryHeader(headers, ["Status"])
   };
 
   if (columns.productId < 0 || columns.stock < 0) {
@@ -193,36 +257,80 @@ function getHomeInventoryStockColumns(headers) {
   }
 
   return columns;
-
 }
 
 /**
- * Menambah baris stok bila produk belum ada di Inventory.
+ * Menambah baris baru pada sheet Inventory.
  *
  * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet
  * @param {Array<String>} headers
  * @param {Object} columns
  * @param {Object} product
- * @param {Number} quantity
+ * @param {Number} stock
+ * @param {String} status
+ * @param {Date} now
  * @returns {Number}
  */
-function appendHomeInventoryStock(sheet, headers, columns, product, quantity) {
-
+function appendHomeInventoryStock(sheet, headers, columns, product, stock, status, now) {
   const row = headers.map(() => "");
   row[columns.productId] = product.productId;
-  row[columns.stock] = quantity;
+  row[columns.stock] = stock;
 
-  if (columns.productName >= 0) {
-    row[columns.productName] = product.productName;
-  }
-
-  if (columns.unit >= 0) {
-    row[columns.unit] = product.unit;
-  }
+  if (columns.productName >= 0) row[columns.productName] = product.productName;
+  if (columns.unit >= 0) row[columns.unit] = product.unit;
+  if (columns.lastUpdate >= 0) row[columns.lastUpdate] = now;
+  if (columns.status >= 0) row[columns.status] = status;
 
   sheet.appendRow(row);
-  return quantity;
+  return stock;
+}
 
+/**
+ * Mencatat transaksi pembelian barang ke sheet Transaction Home Inventory.
+ * Mengikuti schema resmi 10 kolom:
+ * A: Transaction ID
+ * B: Tanggal
+ * C: Product ID
+ * D: Barang
+ * E: Jenis (PURCHASE)
+ * F: Qty
+ * G: Harga Satuan
+ * H: Total (Formula)
+ * I: Supplier/Toko
+ * J: Catatan
+ *
+ * @param {Object} purchase
+ * @returns {Number} Baris yang ditambahkan.
+ */
+function saveHomeInventoryPurchase(purchase) {
+  const sheet = getHomeInventorySheet(CONFIG.HOME_INVENTORY.SHEETS.TRANSACTION);
+  const targetRow = sheet.getLastRow() + 1;
+  const transactionId = "TRX-" + Utilities.formatDate(new Date(), "GMT+7", "yyyyMMdd-HHmmss") + "-" + Math.floor(Math.random() * 1000);
+  const date = purchase.transaction.date || new Date();
+  const unitPrice = (purchase.quantity > 0 && purchase.transaction.amount > 0)
+    ? Math.round(purchase.transaction.amount / purchase.quantity)
+    : "";
+  const supplier = purchase.transaction.merchant || "";
+  const note = "Via Financial Tracker: " + (purchase.transaction.sourceInput || purchase.transaction.description || "");
+
+  // Tulis 10 kolom data
+  sheet.getRange(targetRow, 1, 1, 10).setValues([[
+    transactionId,
+    date,
+    purchase.product.productId,
+    purchase.product.productName,
+    "PURCHASE",
+    purchase.quantity,
+    unitPrice,
+    "", // Kolom Total diset via formula
+    supplier,
+    note
+  ]]);
+
+  // Pasang formula Total di kolom H (8)
+  sheet.getRange(targetRow, 8).setFormula("=IF(G" + targetRow + '="";"";F' + targetRow + "*G" + targetRow + ")");
+
+  return targetRow;
 }
 
 /**
@@ -234,10 +342,8 @@ function appendHomeInventoryStock(sheet, headers, columns, product, quantity) {
  * @returns {Number}
  */
 function findHomeInventoryStockRow(values, productIdColumn, productId) {
-
   return values.findIndex((row, index) => index > 0 &&
     String(row[productIdColumn]) === String(productId));
-
 }
 
 /**
@@ -248,11 +354,9 @@ function findHomeInventoryStockRow(values, productIdColumn, productId) {
  * @returns {Number}
  */
 function findHomeInventoryHeader(headers, names) {
-
   return headers.findIndex(header => names.some(name =>
     normalizeText(header) === normalizeText(name)
   ));
-
 }
 
 /**
@@ -263,9 +367,7 @@ function findHomeInventoryHeader(headers, names) {
  * @returns {*}
  */
 function getHomeInventoryCell(row, column) {
-
   return column >= 0 ? row[column] : "";
-
 }
 
 /**
@@ -275,61 +377,5 @@ function getHomeInventoryCell(row, column) {
  * @returns {Boolean}
  */
 function isHomeInventoryProductActive(value) {
-
   return value === true || value === 1 || normalizeText(value) === "true";
-
-}
-
-/**
- * Mengecek kecocokan nama produk pada teks.
- *
- * @param {String} input
- * @param {String} productName
- * @returns {Boolean}
- */
-function containsProductName(input, productName) {
-
-  const escapedName = normalizeText(productName).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const pattern = new RegExp("\\b" + escapedName + "\\b", "i");
-  return pattern.test(normalizeText(input));
-
-}
-
-/**
- * Menyusun nilai kolom riwayat pembelian berdasarkan nama header.
- *
- * @param {String} header
- * @param {Object} purchase
- * @returns {*}
- */
-function getHomeInventoryPurchaseValue(header, purchase) {
-
-  const headers = CONFIG.HOME_INVENTORY.HEADERS;
-  const value = normalizeText(header);
-
-  if (matchesHomeInventoryHeader(value, headers.TRANSACTION_ID)) return purchase.inventoryTransactionId;
-  if (matchesHomeInventoryHeader(value, headers.TYPE)) return "PURCHASE";
-  if (matchesHomeInventoryHeader(value, headers.PRODUCT_ID)) return purchase.product.productId;
-  if (matchesHomeInventoryHeader(value, headers.PRODUCT_NAME)) return purchase.product.productName;
-  if (matchesHomeInventoryHeader(value, headers.QUANTITY)) return purchase.quantity;
-  if (matchesHomeInventoryHeader(value, headers.PRODUCT_UNIT)) return purchase.product.unit;
-  if (matchesHomeInventoryHeader(value, headers.DATE)) return purchase.transaction.date;
-  if (matchesHomeInventoryHeader(value, headers.UNIT_PRICE)) return purchase.transaction.amount / purchase.quantity;
-  if (matchesHomeInventoryHeader(value, headers.TOTAL)) return purchase.transaction.amount;
-  if (matchesHomeInventoryHeader(value, headers.NOTE)) return purchase.transaction.description;
-  return "";
-
-}
-
-/**
- * Mengecek apakah sebuah header ada dalam daftar nama.
- *
- * @param {String} header
- * @param {Array<String>} names
- * @returns {Boolean}
- */
-function matchesHomeInventoryHeader(header, names) {
-
-  return names.some(name => header === normalizeText(name));
-
 }
