@@ -68,12 +68,17 @@ function syncInventoryPurchase(transaction) {
     const stockResult = syncHomeInventoryStock(product, quantity);
     saveHomeInventoryPurchase({ product: product, quantity: quantity, transaction: transaction });
 
-    return {
+    const result = {
       product: product,
       quantity: quantity,
       newStock: stockResult.newStock,
       status: stockResult.status
     };
+
+    // Kirim notifikasi instan ke Bot Telegram Home Inventory
+    notifyHomeInventoryPurchase(result, transaction);
+
+    return result;
   } catch (error) {
     if (typeof logError === "function") {
       logError(error);
@@ -81,6 +86,64 @@ function syncInventoryPurchase(transaction) {
       Logger.log("Gagal sinkronisasi Home Inventory: " + error.message);
     }
     return null;
+  }
+}
+
+/**
+ * Menyusun dan mengirim notifikasi pembelian ke bot Telegram Home Inventory.
+ *
+ * @param {Object} syncResult
+ * @param {Object} transaction
+ * @returns {Boolean}
+ */
+function notifyHomeInventoryPurchase(syncResult, transaction) {
+  try {
+    const product = syncResult.product;
+    const qty = syncResult.quantity;
+    const unit = product.unit ? " " + product.unit : "";
+    const totalAmount = Number(transaction.amount) || 0;
+    const unitPrice = (qty > 0 && totalAmount > 0) ? Math.round(totalAmount / qty) : 0;
+
+    let statusBadge = "";
+    if (syncResult.status === "OUT_OF_STOCK") {
+      statusBadge = "`OUT_OF_STOCK` 🚫";
+    } else if (syncResult.status === "LOW_STOCK") {
+      statusBadge = "`LOW_STOCK` ⚠️";
+    } else {
+      statusBadge = "`IN_STOCK` ✅";
+    }
+
+    let message = "📥 *Stok Masuk (dari Financial Tracker)*\n\n" +
+      "• *Barang:* " + product.productName + " (`" + product.productId + "`)\n";
+
+    if (product.category) {
+      message += "• *Kategori:* " + product.category + "\n";
+    }
+
+    message += "• *Jumlah Masuk:* +" + qty + unit + "\n" +
+      "• *Stok Sekarang:* *" + syncResult.newStock + unit + "*\n" +
+      "• *Status Stok:* " + statusBadge + "\n";
+
+    if (totalAmount > 0) {
+      message += "• *Total Belanja:* " + formatCurrency(totalAmount);
+      if (qty > 1 && unitPrice > 0) {
+        message += " (" + formatCurrency(unitPrice) + "/" + (product.unit || "unit") + ")";
+      }
+      message += "\n";
+    }
+
+    const note = transaction.sourceInput || transaction.description || "";
+    if (note) {
+      message += "• *Keterangan:* _" + note + "_\n";
+    }
+
+    const nowFormatted = Utilities.formatDate(new Date(), "GMT+7", "dd/MM/yyyy HH:mm") + " WIB";
+    message += "• *Waktu:* " + nowFormatted;
+
+    return sendHomeInventoryTelegramNotification(message);
+  } catch (err) {
+    Logger.log("Peringatan: Gagal memproses notifikasi Home Inventory: " + err.message);
+    return false;
   }
 }
 

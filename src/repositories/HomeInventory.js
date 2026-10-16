@@ -379,3 +379,89 @@ function getHomeInventoryCell(row, column) {
 function isHomeInventoryProductActive(value) {
   return value === true || value === 1 || normalizeText(value) === "true";
 }
+
+/**
+ * Membaca konfigurasi bot Telegram Home Inventory dari sheet Config Home Inventory.
+ *
+ * @returns {{ botToken: String, chatId: String, enabled: Boolean }|null}
+ */
+function getHomeInventoryTelegramConfig() {
+  try {
+    const spreadsheet = getHomeInventorySpreadsheet();
+    const sheet = spreadsheet.getSheetByName("Config");
+    if (!sheet || sheet.getLastRow() <= 1) {
+      return null;
+    }
+
+    const values = sheet.getRange(2, 1, sheet.getLastRow() - 1, 2).getValues();
+    const configMap = {};
+    values.forEach(row => {
+      const key = String(row[0] || "").trim();
+      const val = String(row[1] || "").trim();
+      if (key) {
+        configMap[key] = val;
+      }
+    });
+
+    const botToken = configMap["TELEGRAM_BOT_TOKEN"];
+    const chatId = configMap["TELEGRAM_CHAT_ID"];
+    const enabled = configMap["TELEGRAM_NOTIFICATIONS_ENABLED"] !== "false";
+
+    if (!botToken || !chatId) {
+      return null;
+    }
+
+    return {
+      botToken: botToken,
+      chatId: chatId,
+      enabled: enabled
+    };
+  } catch (error) {
+    Logger.log("Peringatan: Gagal membaca konfigurasi Telegram Home Inventory: " + error.message);
+    return null;
+  }
+}
+
+/**
+ * Mengirim pesan notifikasi ke bot Telegram Home Inventory.
+ * Aman dan terisolasi dari kegagalan transaksi spreadsheet.
+ *
+ * @param {String} message Pesan berformat Markdown.
+ * @returns {Boolean} True jika notifikasi berhasil dikirim.
+ */
+function sendHomeInventoryTelegramNotification(message) {
+  if (!message) return false;
+
+  try {
+    const config = getHomeInventoryTelegramConfig();
+    if (!config || !config.enabled) {
+      return false;
+    }
+
+    const url = "https://api.telegram.org/bot" + config.botToken + "/sendMessage";
+    const payload = {
+      chat_id: config.chatId,
+      text: message,
+      parse_mode: "Markdown"
+    };
+
+    const options = {
+      method: "post",
+      contentType: "application/json",
+      payload: JSON.stringify(payload),
+      muteHttpExceptions: true
+    };
+
+    const response = UrlFetchApp.fetch(url, options);
+    const code = response.getResponseCode();
+    if (code >= 200 && code < 300) {
+      return true;
+    }
+
+    Logger.log("Gagal mengirim notifikasi ke Home Inventory Telegram Bot (HTTP " + code + "): " + response.getContentText());
+    return false;
+  } catch (error) {
+    Logger.log("Peringatan: Pengiriman notifikasi ke Home Inventory Telegram Bot gagal: " + error.message);
+    return false;
+  }
+}
