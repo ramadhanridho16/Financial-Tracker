@@ -131,6 +131,70 @@ function walletExists(walletName) {
 
 }
 
+/**
+ * Membuat wallet baru jika belum ada.
+ *
+ * @param {String} walletName
+ * @param {String} [walletType="Bank"]
+ * @param {Number} [openingBalance=0]
+ * @returns {Object} Wallet object
+ */
+function createWallet(walletName, walletType, openingBalance) {
+  if (!walletName) {
+    throw new Error("Nama wallet tidak boleh kosong.");
+  }
+
+  const existing = getWalletByName(walletName);
+  if (existing) {
+    return existing;
+  }
+
+  const sheet = getSheet(CONFIG.SHEETS.WALLETS);
+  const walletId = generateId(
+    CONFIG.ID_PREFIX.WALLET,
+    CONFIG.SHEETS.WALLETS,
+    1
+  );
+
+  const finalType = walletType || CONFIG.WALLET_TYPE.BANK;
+  const finalBalance = Number(openingBalance) || 0;
+
+  sheet.appendRow([
+    walletId,
+    walletName,
+    finalType,
+    finalBalance,
+    true
+  ]);
+
+  return {
+    walletId: walletId,
+    walletName: walletName,
+    walletType: finalType,
+    openingBalance: finalBalance,
+    active: true,
+    notes: ""
+  };
+}
+
+/**
+ * Mengambil daftar wallet operasional (Non-Loan/Non-Kredit).
+ *
+ * @returns {Array<Object>}
+ */
+function getOperationalWallets() {
+  return getWallets().filter(w => String(w.walletType).toLowerCase() !== "loan");
+}
+
+/**
+ * Mengambil daftar wallet pinjaman / kredit.
+ *
+ * @returns {Array<Object>}
+ */
+function getLoanWallets() {
+  return getWallets().filter(w => String(w.walletType).toLowerCase() === "loan");
+}
+
 function getWalletBalances() {
 
   const wallets = getWallets();
@@ -184,9 +248,33 @@ function getTotalOpeningBalance() {
 
 function getTotalWalletBalance() {
 
-  return getWalletBalances()
+  return getOperationalWallets()
+    .map(w => getWalletBalances().find(b => b.walletId === w.walletId))
+    .filter(Boolean)
     .reduce((sum, wallet) => sum + Number(wallet.balance), 0);
 
+}
+
+/**
+ * Menghitung total saldo seluruh wallet tanpa filter.
+ *
+ * @returns {Number}
+ */
+function getTotalAllWalletBalances() {
+  return getWalletBalances()
+    .reduce((sum, wallet) => sum + Number(wallet.balance), 0);
+}
+
+/**
+ * Menghitung total saldo/kewajiban pada rekening pinjaman/kredit.
+ *
+ * @returns {Number}
+ */
+function getTotalLoanWalletBalance() {
+  return getLoanWallets()
+    .map(w => getWalletBalances().find(b => b.walletId === w.walletId))
+    .filter(Boolean)
+    .reduce((sum, wallet) => sum + Number(wallet.balance), 0);
 }
 
 function ensureWalletBalanceColumn() {

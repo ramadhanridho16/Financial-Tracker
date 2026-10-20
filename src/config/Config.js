@@ -118,6 +118,15 @@ const CONFIG = Object.freeze({
 
   },
 
+  WALLET_TYPE: {
+
+    BANK: "Bank",
+    EWALLET: "E-Wallet",
+    CASH: "Cash",
+    LOAN: "Loan"
+
+  },
+
   RECURRENCE_FREQUENCY: {
 
     WEEKLY: "Mingguan",

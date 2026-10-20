@@ -45,6 +45,14 @@ function saveLoan(loan) {
     1
   );
 
+  // Buat atau kaitkan Wallet Pinjaman khusus (tipe Loan)
+  const loanWalletName = loan.loanWalletName || ("Kredit " + (loan.loanName || loanId));
+  try {
+    createWallet(loanWalletName, CONFIG.WALLET_TYPE.LOAN, 0);
+  } catch (wErr) {
+    logError("Gagal membuat loan wallet otomatis: " + wErr.message);
+  }
+
   const row = [
     loanId,
     loan.loanName || "-",

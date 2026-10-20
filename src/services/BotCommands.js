@@ -147,14 +147,29 @@ function handleHelpCommand() {
  */
 function handleSaldoCommand() {
   const balances = getWalletBalances();
-  const total = getTotalWalletBalance();
-  let text = "💳 *Daftar Saldo Wallet Aktif:*\n\n";
+  const operationalBalances = balances.filter(w => String(w.walletType).toLowerCase() !== "loan");
+  const loanBalances = balances.filter(w => String(w.walletType).toLowerCase() === "loan");
+  const totalOperational = operationalBalances.reduce((sum, w) => sum + Number(w.balance), 0);
 
-  balances.forEach(w => {
-    text += "• *" + w.walletName + "* (" + w.walletType + "): " + formatCurrency(w.balance) + "\n";
-  });
+  let text = "💳 *Daftar Saldo Kas & Rekening Operasional:*\n\n";
 
-  text += "\n💰 *Total Saldo Keseluruhan:* " + formatCurrency(total);
+  if (operationalBalances.length === 0) {
+    text += "_Belum ada rekening debit/kas terdaftar._\n";
+  } else {
+    operationalBalances.forEach(w => {
+      text += "• *" + w.walletName + "* (" + w.walletType + "): " + formatCurrency(w.balance) + "\n";
+    });
+  }
+
+  text += "\n💰 *Total Kas & Likuiditas:* " + formatCurrency(totalOperational) + "\n";
+
+  if (loanBalances.length > 0) {
+    text += "\n🤝 *Rekening Pinjaman / Kredit (Terpisah):*\n";
+    loanBalances.forEach(w => {
+      text += "• *" + w.walletName + "* (" + w.walletType + "): " + formatCurrency(w.balance) + "\n";
+    });
+  }
+
   return text;
 }
 
