@@ -28,6 +28,32 @@ const LOAN_COLUMN = Object.freeze({
 });
 
 /**
+ * Menghasilkan nama wallet pinjaman berbasis Bank / Pihak Pemberi Pinjaman.
+ *
+ * @param {Object} loan
+ * @returns {String}
+ */
+function deriveLoanWalletName(loan) {
+  if (!loan) return "Kredit Pinjaman";
+  if (loan.loanWalletName && String(loan.loanWalletName).trim()) {
+    return String(loan.loanWalletName).trim();
+  }
+
+  const lender = String(loan.lender || "").trim();
+  const name = String(loan.loanName || "").trim();
+
+  if (lender && lender !== "-") {
+    // Jika ada lender dan nama pinjaman spesifik
+    if (name && name !== "-" && name.toLowerCase() !== lender.toLowerCase()) {
+      return "Kredit " + lender + " (" + name + ")";
+    }
+    return "Kredit " + lender;
+  }
+
+  return name ? "Kredit " + name : "Kredit Pinjaman";
+}
+
+/**
  * Menyimpan data pinjaman baru ke sheet Loans.
  *
  * @param {Object} loan
@@ -45,8 +71,8 @@ function saveLoan(loan) {
     1
   );
 
-  // Buat atau kaitkan Wallet Pinjaman khusus (tipe Loan)
-  const loanWalletName = loan.loanWalletName || ("Kredit " + (loan.loanName || loanId));
+  // Buat atau kaitkan Wallet Pinjaman khusus (tipe Loan) berbasis Bank Pemberi Pinjaman
+  const loanWalletName = deriveLoanWalletName(loan);
   try {
     createWallet(loanWalletName, CONFIG.WALLET_TYPE.LOAN, 0);
   } catch (wErr) {

@@ -375,13 +375,16 @@ function handleStepNotes(chatId, state, input) {
  */
 function formatLoanConfirmationCard(data) {
   const dueStr = Utilities.formatDate(data.dueDate, "Asia/Jakarta", "dd MMMM yyyy");
-  const loanWalletName = "Kredit " + (data.loanName || "Pinjaman");
+  const loanWalletName = typeof deriveLoanWalletName === "function" 
+    ? deriveLoanWalletName(data)
+    : ("Kredit " + (data.lender || data.loanName || "Pinjaman"));
 
   return "📋 *Ringkasan Kalkulasi Kredit & Pinjaman*\n" +
     "--------------------------------------------------\n" +
     "• *Nama:* " + data.loanName + " (" + data.lender + ")\n" +
-    "• *Jenis:* " + data.loanType + "\n" +
+    "• *Pemberi Pinjaman (Bank/Lender):* " + data.lender + "\n" +
     "• *Rekening Pinjaman (Wallet):* `" + loanWalletName + "` (Terpisah)\n" +
+    "• *Jenis:* " + data.loanType + "\n" +
     "• *Pokok Pinjaman:* " + formatCurrency(data.principal) + "\n" +
     "• *Sistem Bunga:* " + data.interestType + " (" + data.interestRate + "% p.a.)\n" +
     "• *Tenor:* " + data.tenor + " Bulan\n" +
@@ -410,7 +413,9 @@ function handleStepConfirmation(chatId, state, input) {
 
   if (upper === "YA" || upper === "Y") {
     try {
-      const loanWalletName = "Kredit " + (state.data.loanName || "Pinjaman");
+      const loanWalletName = typeof deriveLoanWalletName === "function"
+        ? deriveLoanWalletName(state.data)
+        : ("Kredit " + (state.data.lender || state.data.loanName || "Pinjaman"));
       state.data.loanWalletName = loanWalletName;
       const loanId = saveLoan(state.data);
       clearLoanWizardState(chatId);
@@ -418,12 +423,13 @@ function handleStepConfirmation(chatId, state, input) {
       return "✅ *Pinjaman Berhasil Disimpan!*\n\n" +
         "• *Loan ID:* `" + loanId + "`\n" +
         "• *Nama:* " + state.data.loanName + "\n" +
-        "• *Rekening Pinjaman:* `" + loanWalletName + "`\n" +
+        "• *Pemberi Pinjaman:* " + state.data.lender + "\n" +
+        "• *Rekening Pinjaman (Wallet):* `" + loanWalletName + "`\n" +
         "• *Pokok:* " + formatCurrency(state.data.principal) + "\n" +
         "• *Cicilan:* *" + formatCurrency(state.data.installmentAmount) + " / bulan*\n" +
         "• *Jatuh Tempo:* Setiap tanggal " + state.data.installmentDay + "\n" +
         "• *Status:* `Active`\n\n" +
-        "📊 _Data telah dicatat ke sheet Loans & Wallet Pinjaman telah dibuat terpisah._\n" +
+        "📊 _Data telah dicatat ke sheet Loans & Wallet Pinjaman telah dibuat atas nama Bank/Lender._\n" +
         "Ketik `/saldo` untuk melihat daftar wallet, atau `/kalender` untuk kalender cicilan.";
     } catch (err) {
       clearLoanWizardState(chatId);

@@ -23,6 +23,6 @@
 ## Milestone 4: Next Planned Evolutions (Future Backlog)
 - [ ] **Phase 4.1: Split Transactions**: Memecah satu total transaksi menjadi beberapa alokasi kategori/item.
 - [x] **Phase 1.1: Strip OCR & VLM from GAS**: Menghapus seluruh eksperimen Direct OCR/VLM dari runtime GAS untuk menjaga stabilitas dan kecepatan (dialihkan ke VPS eksternal).
-- [ ] **Phase 4.2: External VPS Receipt Processing Engine**: Pemrosesan struk citra resolusi tinggi dengan model ML/VLM pada server/VPS dedicated (di luar Google Apps Script).
+- [ ] **Phase 1.2: Lender-based Loan Wallet**: Otomatisasi pembentukan wallet utang berbasis Bank/Pihak Pemberi Pinjaman.
 - [ ] **Phase 4.4: AI Categorization Engine**: Peningkatan akurasi klasifikasi kategori menggunakan Gemini API untuk kalimat ambigu di luar kamus.
 
