@@ -68,6 +68,9 @@ function initializeBotCommands() {
   registerBotCommand("/kredit", handleKreditCommand, "Mencatat pinjaman baru via mode percakapan berpemandu", "/kredit");
   registerBotCommand("/kalender", handleCalendarCommand, "Melihat kalender jatuh tempo cicilan bulanan", "/kalender");
   registerBotCommand("/jadwal", handleCalendarCommand, "Alias kalender cicilan", "/jadwal");
+  registerBotCommand("/tambahwallet", handleAddWalletCommand, "Menambah rekening/wallet baru", "/tambahwallet <nama> [tipe] [saldo_awal]");
+  registerBotCommand("/setwallet", handleReconcileWalletCommand, "Mencocokkan saldo wallet & deteksi selisih", "/setwallet <nama> <nominal>");
+  registerBotCommand("/cocokkan", handleReconcileWalletCommand, "Alias setwallet", "/cocokkan <nama> <nominal>");
   registerBotCommand("/batal", handleCancelWizardCommand, "Membatalkan sesi percakapan aktif", "/batal");
 }
 
@@ -355,6 +358,135 @@ function handleCalendarCommand(chatId, args) {
 function handleCancelWizardCommand(chatId) {
   clearLoanWizardState(chatId);
   return "❌ *Sesi Dibatalkan*\nTidak ada data yang disimpan.";
+}
+
+/**
+ * Handler Perintah: /tambahwallet
+ * Format: /tambahwallet <nama> [tipe: Bank/E-Wallet/Cash/Loan] [saldo_awal]
+ *
+ * @param {String|Number} chatId
+ * @param {String} args
+ * @returns {String}
+ */
+function handleAddWalletCommand(chatId, args) {
+  if (!args || !args.trim()) {
+    return "💡 *Cara Menambah Wallet Baru:*\n" +
+      "Ketik: `/tambahwallet <nama> [tipe] [saldo_awal]`\n\n" +
+      "• *Contoh 1:* `/tambahwallet Jago Bank 500k`\n" +
+      "• *Contoh 2:* `/tambahwallet Dompet Cash 150rb`\n" +
+      "• *Contoh 3:* `/tambahwallet OVO E-Wallet`\n\n" +
+      "Pilihan tipe: `Bank`, `E-Wallet`, `Cash`, `Loan`.";
+  }
+
+  const parts = args.trim().split(/\s+/);
+  const name = parts[0];
+
+  let type = CONFIG.WALLET_TYPE.BANK;
+  let rawBalance = "0";
+
+  if (parts.length >= 3) {
+    type = parts[1];
+    rawBalance = parts.slice(2).join(" ");
+  } else if (parts.length === 2) {
+    const secondLower = parts[1].toLowerCase();
+    if (secondLower === "bank" || secondLower === "e-wallet" || secondLower === "cash" || secondLower === "loan") {
+      type = parts[1];
+    } else {
+      rawBalance = parts[1];
+    }
+  }
+
+  // Normalisasi nominal saldo awal
+  const normalizedBalanceStr = normalizeTransactionInput(rawBalance);
+  const openingBalance = parseAmount(normalizedBalanceStr) || 0;
+
+  try {
+    const wallet = createWallet(name, type, openingBalance);
+    updateWalletBalances();
+    refreshDashboard();
+
+    return "✅ *Wallet Berhasil Ditambahkan!*\n\n" +
+      "• *Nama Wallet:* `" + wallet.walletName + "`\n" +
+      "• *Tipe:* " + wallet.walletType + "\n" +
+      "• *Saldo Awal:* *" + formatCurrency(wallet.openingBalance) + "*\n\n" +
+      "💡 _Ketik `/saldo` untuk melihat daftar seluruh wallet._";
+  } catch (err) {
+    return "⚠️ *Gagal Menambah Wallet:*\n" + err.message;
+  }
+}
+
+/**
+ * Handler Perintah: /setwallet atau /cocokkan
+ * Format: /cocokkan <nama_wallet> <nominal_baru>
+ *
+ * @param {String|Number} chatId
+ * @param {String} args
+ * @returns {String}
+ */
+function handleReconcileWalletCommand(chatId, args) {
+  if (!args || !args.trim()) {
+    return "💡 *Cara Mencocokkan / Opname Saldo:*\n" +
+      "Ketik: `/cocokkan <nama_wallet> <nominal_baru>`\n\n" +
+      "• *Contoh 1:* `/cocokkan bca 1.450.000`\n" +
+      "• *Contoh 2:* `/setwallet tunai 250k`\n\n" +
+      "Sistem akan otomatis mencatat selisihnya dan mendeteksi dugaan uang hilang (admin bank / parkir / transaksi rekursif).";
+  }
+
+  const parts = args.trim().split(/\s+/);
+  if (parts.length < 2) {
+    return "⚠️ Format belum lengkap. Sertakan nama wallet dan nominal baru (Contoh: `/cocokkan bca 1.5jt`).";
+  }
+
+  const walletName = parts[0];
+  const rawTarget = parts.slice(1).join(" ");
+  const normalizedTarget = normalizeTransactionInput(rawTarget);
+  const targetAmount = parseAmount(normalizedTarget);
+
+  if (targetAmount === null || targetAmount === undefined || isNaN(targetAmount)) {
+    return "⚠️ Nominal tidak valid. Masukkan angka yang jelas (Contoh: `150k`, `1.500.000`).";
+  }
+
+  try {
+    const result = reconcileWalletBalance(walletName, targetAmount);
+
+    if (result.status === "equal") {
+      return "👌 *Saldo Sudah Cocok!*\nSaldo *" + result.walletName + "* saat ini sudah tepat *" + formatCurrency(result.balance) + "*. Tidak ada selisih.";
+    }
+
+    let reply = "";
+    if (result.status === "surplus") {
+      reply += "📈 *Penyesuaian Saldo Masuk (Surplus)*\n" +
+        "--------------------------------------------------\n" +
+        "• *Wallet:* `" + result.walletName + "`\n" +
+        "• *Saldo Tercatat Sebelumnya:* " + formatCurrency(result.previousBalance) + "\n" +
+        "• *Saldo Fisik / Baru:* *" + formatCurrency(result.newBalance) + "*\n" +
+        "• *Kelebihan Saldo:* +" + formatCurrency(result.absDelta) + "\n" +
+        "--------------------------------------------------\n" +
+        "✅ _Selisih telah otomatis dicatat sebagai Pemasukan (Penyesuaian Saldo)._";
+    } else {
+      reply += "📉 *Penyesuaian Saldo Keluar (Defisit / Selisih)*\n" +
+        "--------------------------------------------------\n" +
+        "• *Wallet:* `" + result.walletName + "`\n" +
+        "• *Saldo Tercatat Sebelumnya:* " + formatCurrency(result.previousBalance) + "\n" +
+        "• *Saldo Fisik / Baru:* *" + formatCurrency(result.newBalance) + "*\n" +
+        "• *Selisih Uang Hilang:* -" + formatCurrency(result.absDelta) + "\n" +
+        "--------------------------------------------------\n" +
+        "⚠️ _Selisih telah otomatis dicatat sebagai Pengeluaran (Penyesuaian Saldo)._\n\n";
+
+      if (result.leakDetections && result.leakDetections.length > 0) {
+        reply += "🔍 *Analisis Dugaan Pengeluaran / Uang Hilang:*\n";
+        result.leakDetections.forEach(d => {
+          reply += "• " + d + "\n";
+        });
+      } else {
+        reply += "💡 _Kemungkinan: Pengeluaran tunai/debit harian yang belum sempat dicatat._";
+      }
+    }
+
+    return reply;
+  } catch (err) {
+    return "⚠️ *Gagal Mencocokkan Saldo:*\n" + err.message;
+  }
 }
 
 

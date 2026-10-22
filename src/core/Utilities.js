@@ -175,6 +175,11 @@ function parseAmount(text){
 
   text = normalizeText(text);
 
+  // Jika berupa format ribuan standar dengan titik (misal: 1.050.000 atau 10.000) tanpa satuan k/jt
+  if (/^\d{1,3}(\.\d{3})+$/.test(text)) {
+    return parseNumber(text);
+  }
+
   const match = text.match(/(\d+[.,]?\d*)\s*(jt|juta|rb|ribu|k)?/i);
 
   if(!match){
