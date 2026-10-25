@@ -1,21 +1,25 @@
 Current Version
 
-1.0
+1.4.0
 
 Completed
 
-[x] Parser
+[x] Parser & Multi-Wallet Engine
 
-[x] Wallet
+[x] Budget System
 
-[x] Budget
+[x] Telegram Bot Integration
+
+[x] Loan & Calendar System
+
+[x] Wallet Management & Reconciliation (Phase 2.1)
 
 Planned
+
+[ ] Payday (25th) Budget & Category Ingestion (Phase 2.2)
 
 [ ] Split Transaction
 
 [ ] OCR
-
-[ ] Telegram
 
 [ ] AI Categorization
