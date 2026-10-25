@@ -68,6 +68,9 @@ function initializeBotCommands() {
   registerBotCommand("/kredit", handleKreditCommand, "Mencatat pinjaman baru via mode percakapan berpemandu", "/kredit");
   registerBotCommand("/kalender", handleCalendarCommand, "Melihat kalender jatuh tempo cicilan bulanan", "/kalender");
   registerBotCommand("/jadwal", handleCalendarCommand, "Alias kalender cicilan", "/jadwal");
+  registerBotCommand("/tambahkategori", handleAddCategoryCommand, "Menambah kategori baru & kata kunci", "/tambahkategori <nama> [keyword1, kw2]");
+  registerBotCommand("/setbudget", handleSetBudgetCommand, "Mengatur limit nominal budget bulanan", "/setbudget <kategori> <nominal> [warning%]");
+  registerBotCommand("/hapusbudget", handleDeleteBudgetCommand, "Menghapus/menonaktifkan budget kategori", "/hapusbudget <kategori>");
   registerBotCommand("/tambahwallet", handleAddWalletCommand, "Menambah rekening/wallet baru", "/tambahwallet <nama> [tipe] [saldo_awal]");
   registerBotCommand("/setwallet", handleReconcileWalletCommand, "Mencocokkan saldo wallet & deteksi selisih", "/setwallet <nama> <nominal>");
   registerBotCommand("/cocokkan", handleReconcileWalletCommand, "Alias setwallet", "/cocokkan <nama> <nominal>");
@@ -234,15 +237,182 @@ function handleKategoriCommand() {
 function handleBudgetCommand() {
   const budgets = getBudgets();
   if (budgets.length === 0) {
-    return "🎯 *Budget Bulanan:*\nBelum ada anggaran (budget) yang diatur.";
+    return "🎯 *Budget Siklus Gajian:*\nBelum ada anggaran (budget) yang diatur.\n\n💡 _Gunakan perintah:_ `/setbudget <kategori> <nominal>` _untuk mulai membuat anggaran._";
   }
 
-  let text = "🎯 *Status Anggaran (Budget) Aktif:*\n\n";
+  const period = getPaydayPeriod();
+  let text = "🎯 *Status Anggaran (Siklus Gajian)*\n";
+  text += "📅 *Periode:* `" + period.label + "`\n";
+  text += "💡 _Reset otomatis setiap tanggal 25 (Hari Gajian)_\n\n";
+
+  let totalLimit = 0;
+  let totalSpent = 0;
+
   budgets.forEach(b => {
-    text += "• *" + b.category + "* (" + b.periodType + ")\n" +
-      "  Limit: " + formatCurrency(b.limit) + " | Warning: " + formatCurrency(b.warning) + "\n";
+    const status = getBudgetUsageStatus(b.category);
+    if (!status) return;
+
+    totalLimit += status.limit;
+    totalSpent += status.spent;
+
+    text += "• *" + status.category + "* " + status.progressBar + "\n" +
+      "  Terpakai: " + formatCurrency(status.spent) + " / " + formatCurrency(status.limit) + "\n" +
+      "  Sisa: " + formatCurrency(status.remaining) + " | " + status.badge + "\n\n";
   });
+
+  const overallPct = totalLimit > 0 ? Math.round((totalSpent / totalLimit) * 100) : 0;
+  const overallRem = totalLimit - totalSpent;
+  text += "----------------------------------------\n" +
+    "💰 *Total Anggaran:* " + formatCurrency(totalLimit) + "\n" +
+    "💸 *Total Terpakai:* " + formatCurrency(totalSpent) + " (" + overallPct + "%)\n" +
+    "🛡️ *Total Sisa Kuota:* " + formatCurrency(overallRem);
+
   return text;
+}
+
+/**
+ * Handler Perintah: /setbudget
+ * Syntax: /setbudget <kategori> <nominal> [warning%]
+ * Contoh: /setbudget Makanan 2.5jt
+ * Contoh: /setbudget Transport 500k 85
+ *
+ * @param {String|Number} chatId
+ * @param {String} args
+ * @returns {String}
+ */
+function handleSetBudgetCommand(chatId, args) {
+  if (!args || !args.trim()) {
+    return "🎯 *Panduan Mengatur Anggaran (Budget):*\n" +
+      "Gunakan format: `/setbudget <kategori> <nominal> [warning%]`\n\n" +
+      "*Contoh:*\n" +
+      "• `/setbudget Makanan 2.5jt`\n" +
+      "• `/setbudget Transport 500k 85`\n" +
+      "• `/setbudget Belanja 1.200.000`\n\n" +
+      "💡 _Budget akan otomatis diperbarui setiap tanggal 25 (Hari Gajian)._";
+  }
+
+  const parts = args.trim().split(/\s+/);
+  if (parts.length < 2) {
+    return "⚠️ Format kurang lengkap. Masukkan minimal nama kategori dan nominal anggaran.\nContoh: `/setbudget Makanan 2jt`";
+  }
+
+  let warningPct = 80;
+  let nominalIndex = parts.length - 1;
+
+  const lastArg = parts[parts.length - 1].replace("%", "");
+  if (!isNaN(Number(lastArg)) && Number(lastArg) >= 1 && Number(lastArg) <= 100 && parts.length >= 3) {
+    warningPct = Number(lastArg);
+    nominalIndex = parts.length - 2;
+  }
+
+  const rawNominal = parts[nominalIndex];
+  const normalizedNominal = normalizeTransactionInput(rawNominal);
+  const limitAmount = parseAmount(normalizedNominal);
+
+  if (!limitAmount || isNaN(limitAmount) || limitAmount <= 0) {
+    return "⚠️ Nominal budget `" + rawNominal + "` tidak valid. Gunakan format yang jelas (Contoh: `500k`, `2.5jt`, `1.500.000`).";
+  }
+
+  const categoryName = parts.slice(0, nominalIndex).join(" ").trim();
+
+  try {
+    const result = upsertBudget(categoryName, limitAmount, warningPct);
+
+    return "🎯 *Anggaran (Budget) Berhasil Diatur!*\n" +
+      "----------------------------------------\n" +
+      "• *Kategori:* *" + result.category + "*\n" +
+      "• *Plafon Limit:* *" + formatCurrency(result.limit) + "*\n" +
+      "• *Ambang Waspada:* " + result.warning + "% (" + formatCurrency(result.limit * (result.warning / 100)) + ")\n" +
+      "• *Siklus Gajian:* " + result.periodLabel + "\n" +
+      "• *Status:* Aktif " + (result.isNew ? "(Baru)" : "(Diperbarui)") + "\n" +
+      "----------------------------------------\n" +
+      "💡 _Anggaran ini akan otomatis di-rollover setiap tanggal 25 (Hari Gajian)._\n" +
+      "Ketik `/budget` untuk memantau status pemakaian saat ini.";
+  } catch (err) {
+    return "⚠️ *Gagal Mengatur Budget:*\n" + err.message;
+  }
+}
+
+/**
+ * Handler Perintah: /tambahkategori
+ * Syntax: /tambahkategori <nama_kategori> [keyword1, keyword2, ...]
+ *
+ * @param {String|Number} chatId
+ * @param {String} args
+ * @returns {String}
+ */
+function handleAddCategoryCommand(chatId, args) {
+  if (!args || !args.trim()) {
+    return "📁 *Panduan Menambah Kategori Baru:*\n" +
+      "Gunakan format: `/tambahkategori <nama_kategori> [keyword1, keyword2, ...]`\n\n" +
+      "*Contoh:*\n" +
+      "• `/tambahkategori Skincare sunscreen, serum, cleanser`\n" +
+      "• `/tambahkategori Kebugaran gym, fitness, protein`\n" +
+      "• `/tambahkategori Zakat infaq, sedekah`\n\n" +
+      "💡 _Keyword memudahkan bot mendeteksi transaksi secara otomatis._";
+  }
+
+  let categoryName = "";
+  let keywordsStr = "";
+
+  if (args.includes(",")) {
+    const firstCommaIndex = args.indexOf(",");
+    categoryName = args.substring(0, firstCommaIndex).trim();
+    keywordsStr = args.substring(firstCommaIndex + 1).trim();
+  } else {
+    const parts = args.trim().split(/\s+/);
+    categoryName = parts[0];
+    keywordsStr = parts.slice(1).join(", ");
+  }
+
+  try {
+    const result = saveNewCategory(categoryName, keywordsStr);
+
+    let reply = "📁 *Kategori Transaksi Berhasil " + (result.isNew ? "Ditambahkan" : "Diperbarui") + "!*\n" +
+      "----------------------------------------\n" +
+      "• *Nama Kategori:* *" + result.category + "*\n" +
+      "• *Keyword Utama:* `" + result.primaryKeyword + "`\n";
+
+    if (result.aliases) {
+      reply += "• *Alias / Kata Kunci:* `" + result.aliases + "`\n";
+    }
+
+    reply += "----------------------------------------\n" +
+      "✅ _Kategori sekarang siap digunakan untuk pencatatan transaksi._\n" +
+      "💡 Ingin menentukan batas anggaran? Ketik:\n" +
+      "`/setbudget " + result.category + " <nominal>`";
+
+    return reply;
+  } catch (err) {
+    return "⚠️ *Gagal Menambah Kategori:*\n" + err.message;
+  }
+}
+
+/**
+ * Handler Perintah: /hapusbudget
+ * Syntax: /hapusbudget <kategori>
+ *
+ * @param {String|Number} chatId
+ * @param {String} args
+ * @returns {String}
+ */
+function handleDeleteBudgetCommand(chatId, args) {
+  if (!args || !args.trim()) {
+    return "⚠️ Masukkan nama kategori yang budgetnya ingin dihapus.\nContoh: `/hapusbudget Makanan`";
+  }
+
+  const category = args.trim();
+  const existing = getBudgetByCategory(category);
+  if (!existing || !existing.active) {
+    return "ℹ️ Tidak ditemukan anggaran aktif untuk kategori *" + category + "*.";
+  }
+
+  const success = deleteBudget(existing.budgetId);
+  if (success) {
+    return "🗑️ *Anggaran Dinonaktifkan:*\nBudget untuk kategori *" + existing.category + "* berhasil dinonaktifkan.";
+  } else {
+    return "⚠️ Gagal menonaktifkan budget untuk kategori *" + category + "*.";
+  }
 }
 
 /**

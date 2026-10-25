@@ -14,9 +14,9 @@ Completed
 
 [x] Wallet Management & Reconciliation (Phase 2.1)
 
-Planned
+[x] Payday (25th) Budget & Category Ingestion (Phase 2.2)
 
-[ ] Payday (25th) Budget & Category Ingestion (Phase 2.2)
+Planned
 
 [ ] Split Transaction
 

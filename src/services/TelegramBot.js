@@ -198,7 +198,35 @@ function formatTelegramTransactionReceipt(transactions, syncedInventoryItems) {
     }
   }
 
-  reply += "📊 _Dashboard & Saldo telah otomatis diperbarui._";
+  // Pengecekan ambang batas budget pada transaksi EXPENSE (Siklus Gajian)
+  const expenseCategories = [...new Set(
+    transactions
+      .filter(t => t.transactionType === CONFIG.TRANSACTION_TYPE.EXPENSE && t.category)
+      .map(t => t.category)
+  )];
+
+  const budgetWarnings = [];
+  expenseCategories.forEach(cat => {
+    try {
+      const status = getBudgetUsageStatus(cat);
+      if (status && (status.status === "WARNING" || status.status === "OVER_BUDGET")) {
+        budgetWarnings.push(
+          "• *" + status.category + ":* " + status.badge + "\n" +
+          "  Terpakai: *" + formatCurrency(status.spent) + "* / " + formatCurrency(status.limit) + " (" + status.percentage + "%)\n" +
+          "  Sisa Kuota: " + (status.remaining >= 0 ? formatCurrency(status.remaining) : "-" + formatCurrency(Math.abs(status.remaining)))
+        );
+      }
+    } catch (e) {
+      // Abaikan jika service budget belum siap
+    }
+  });
+
+  if (budgetWarnings.length > 0) {
+    reply += "\n⚠️ *Peringatan Anggaran (Siklus Gajian):*\n" +
+      budgetWarnings.join("\n\n") + "\n";
+  }
+
+  reply += "\n📊 _Dashboard & Saldo telah otomatis diperbarui._";
   return reply;
 }
 
@@ -265,6 +293,13 @@ function getTelegramDashboardSummaryMessage() {
  * @returns {Object}
  */
 function sendDailyLoanDueReminders(refDate) {
+  // Cek pemicu rollover budget pada hari gajian (tanggal 25)
+  try {
+    checkPaydayBudgetRollover(refDate);
+  } catch (err) {
+    logError("Gagal menjalankan checkPaydayBudgetRollover: " + err.message);
+  }
+
   const dueItems = getDueLoansForReminder(refDate);
   if (!dueItems || dueItems.length === 0) {
     return { status: "no_due_loans", count: 0 };
@@ -294,5 +329,53 @@ function sendDailyLoanDueReminders(refDate) {
   });
 
   return { status: "reminders_sent", count: dueItems.length };
+}
+
+/**
+ * Mengecek apakah hari ini adalah tanggal gajian (tgl 25) dan mengirimkan notifikasi rollover budget.
+ *
+ * @param {Date} [refDate]
+ * @returns {Object}
+ */
+function checkPaydayBudgetRollover(refDate) {
+  const today = refDate ? new Date(refDate) : new Date();
+  const paydayDay = Number(getSetting("Payday Date") || 25);
+
+  if (today.getDate() !== paydayDay) {
+    return { status: "not_payday", date: today.getDate() };
+  }
+
+  const defaultChatId = getSetting("Telegram Allowed User ID") || getSetting("Telegram Default Chat ID") || CONFIG.TELEGRAM.DEFAULT_CHAT_ID;
+  if (!defaultChatId) {
+    return { status: "no_chat_id" };
+  }
+
+  const primaryChatId = String(defaultChatId).split(",")[0].trim();
+  const rollover = evaluatePaydayRollover(today, paydayDay);
+
+  let msg = "🎉 *SELAMAT HARI GAJIAN!*\n" +
+    "Siklus Anggaran Baru Telah Aktif: `" + rollover.newPeriod.label + "`\n\n" +
+    "📊 *Rekapitulasi Anggaran Siklus Kemarin:*\n" +
+    "• Periode: `" + rollover.completedPeriod.label + "`\n" +
+    "• Total Plafon: " + formatCurrency(rollover.totalBudget) + "\n" +
+    "• Total Realisasi: " + formatCurrency(rollover.totalExpense) + "\n" +
+    "• " + (rollover.totalSavings >= 0 
+      ? "Penghematan Bersih: *+" + formatCurrency(rollover.totalSavings) + "* 👏" 
+      : "Defisit / Melebihi Anggaran: *-" + formatCurrency(Math.abs(rollover.totalSavings)) + "* ⚠️") + "\n\n";
+
+  if (rollover.evaluations.length > 0) {
+    msg += "🎯 *Status Kategori Anggaran Aktif:*\n";
+    rollover.evaluations.forEach(ev => {
+      msg += "• *" + ev.category + ":* " + formatCurrency(ev.limit) + " " +
+        (ev.isOver ? "(🚨 Over " + ev.percentage + "% bulan lalu)" : "(✅ Terkendali)") + "\n";
+    });
+    msg += "\n";
+  }
+
+  msg += "💡 _Ingin menyesuaikan batas anggaran bulan ini?_\n" +
+    "Gunakan: `/setbudget <Kategori> <Nominal>`";
+
+  sendTelegramMessage(primaryChatId, msg);
+  return { status: "payday_rollover_sent", evaluations: rollover.evaluations.length };
 }
 

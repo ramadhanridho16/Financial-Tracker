@@ -72,3 +72,4 @@ Berdasarkan data dan tangkapan layar Google Spreadsheet:
 5. Pemicu otomatis tanggal 25 mengirim pesan rekapitulasi gajian & rollover budget ke chat Telegram.
 6. Struk transaksi Telegram memunculkan peringatan jika pengeluaran kategori mendekati atau melebihi limit budget.
 7. Seluruh unit test lokal Node.js lolos 100% dan terverifikasi di Google Apps Script.
+
