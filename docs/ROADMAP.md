@@ -18,6 +18,8 @@ Completed
 
 Planned
 
+[ ] Real-Time Instant Budget Feedback & Keyword Mapping (Phase 2.3)
+
 [ ] Split Transaction
 
 [ ] OCR
