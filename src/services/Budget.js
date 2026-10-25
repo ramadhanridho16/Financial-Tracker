@@ -94,20 +94,66 @@ function getBudgetById(budgetId){
 
 
 /**
- * Mengambil Budget berdasarkan Category.
+ * Memeriksa apakah dua nama kategori cocok (mendukung variasi simbol &, 'dan', dan substring).
+ *
+ * @param {String} cat1
+ * @param {String} cat2
+ * @returns {Boolean}
+ */
+function isCategoryMatch(cat1, cat2) {
+  if (!cat1 || !cat2) return false;
+  const n1 = normalizeText(cat1);
+  const n2 = normalizeText(cat2);
+  if (n1 === n2) return true;
+
+  // Cek kecocokan setelah normalisasi tanda & dan karakter non-alfanumerik
+  const clean1 = n1.replace(/&/g, "dan").replace(/[^a-z0-9]/g, "");
+  const clean2 = n2.replace(/&/g, "dan").replace(/[^a-z0-9]/g, "");
+  if (clean1 && clean2 && clean1 === clean2) return true;
+
+  // Cek jika salah satu merupakan bagian signifikan dari yang lain (misal 'makanan' di 'makanan & minuman')
+  if (n1.length >= 4 && n2.length >= 4) {
+    if (n1.includes(n2) || n2.includes(n1)) return true;
+  }
+  return false;
+}
+
+/**
+ * Mengambil Budget berdasarkan Category dengan pencocokan cerdas (fleksibel).
  *
  * @param {String} category
  * @returns {Object|null}
  */
 function getBudgetByCategory(category){
 
-  category = normalizeText(category);
-
+  if (!category) return null;
+  const normCat = normalizeText(category);
   const budgets = getBudgets();
 
-  return budgets.find(
-    budget => normalizeText(budget.category) === category
-  ) || null;
+  // 1. Cek Exact Match
+  const exact = budgets.find(
+    budget => normalizeText(budget.category) === normCat
+  );
+  if (exact) return exact;
+
+  // 2. Cek Match dengan normalisasi & dan simbol
+  const cleanCat = normCat.replace(/&/g, "dan").replace(/[^a-z0-9]/g, "");
+  const cleanMatch = budgets.find(budget => {
+    const bClean = normalizeText(budget.category).replace(/&/g, "dan").replace(/[^a-z0-9]/g, "");
+    return bClean && bClean === cleanCat;
+  });
+  if (cleanMatch) return cleanMatch;
+
+  // 3. Cek Substring / Bagian Nama (misal 'makanan' cocok dengan 'makanan & minuman')
+  if (normCat.length >= 4) {
+    const partialMatch = budgets.find(budget => {
+      const bNorm = normalizeText(budget.category);
+      return bNorm.includes(normCat) || normCat.includes(bNorm);
+    });
+    if (partialMatch) return partialMatch;
+  }
+
+  return null;
 
 }
 
@@ -351,7 +397,7 @@ function getCategoryExpenseInPaydayPeriod(category, paydayDate, referenceDate) {
       const type = normalizeText(t.transactionType);
       return type === normalizeText(CONFIG.TRANSACTION_TYPE.EXPENSE) || type === "expense";
     })
-    .filter(t => normalizeText(t.category) === normalizedCategory)
+    .filter(t => isCategoryMatch(t.category, category))
     .filter(t => isDateInPeriod(t.date, period))
     .reduce((sum, t) => sum + Number(t.amount || 0), 0);
 }

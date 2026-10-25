@@ -198,32 +198,30 @@ function formatTelegramTransactionReceipt(transactions, syncedInventoryItems) {
     }
   }
 
-  // Pengecekan ambang batas budget pada transaksi EXPENSE (Siklus Gajian)
+  // Umpan balik kuota budget instan pada transaksi EXPENSE (Siklus Gajian)
   const expenseCategories = [...new Set(
     transactions
       .filter(t => t.transactionType === CONFIG.TRANSACTION_TYPE.EXPENSE && t.category)
       .map(t => t.category)
   )];
 
-  const budgetWarnings = [];
+  const budgetCards = [];
   expenseCategories.forEach(cat => {
     try {
       const status = getBudgetUsageStatus(cat);
-      if (status && (status.status === "WARNING" || status.status === "OVER_BUDGET")) {
-        budgetWarnings.push(
-          "• *" + status.category + ":* " + status.badge + "\n" +
-          "  Terpakai: *" + formatCurrency(status.spent) + "* / " + formatCurrency(status.limit) + " (" + status.percentage + "%)\n" +
-          "  Sisa Kuota: " + (status.remaining >= 0 ? formatCurrency(status.remaining) : "-" + formatCurrency(Math.abs(status.remaining)))
-        );
+      if (status) {
+        const card = "🎯 *Kuota Anggaran " + status.category + ":*\n" +
+          "• *Terpakai:* " + formatCurrency(status.spent) + " / " + formatCurrency(status.limit) + " (" + status.percentage + "%)\n" +
+          "• *Sisa Kuota:* *" + (status.remaining >= 0 ? formatCurrency(status.remaining) : "-" + formatCurrency(Math.abs(status.remaining))) + "* | " + status.badge;
+        budgetCards.push(card);
       }
     } catch (e) {
       // Abaikan jika service budget belum siap
     }
   });
 
-  if (budgetWarnings.length > 0) {
-    reply += "\n⚠️ *Peringatan Anggaran (Siklus Gajian):*\n" +
-      budgetWarnings.join("\n\n") + "\n";
+  if (budgetCards.length > 0) {
+    reply += "\n" + budgetCards.join("\n\n") + "\n";
   }
 
   reply += "\n📊 _Dashboard & Saldo telah otomatis diperbarui._";

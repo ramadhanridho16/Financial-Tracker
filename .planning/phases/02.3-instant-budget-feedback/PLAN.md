@@ -8,13 +8,13 @@ Memastikan setiap transaksi pengeluaran (seperti pembelian makanan & minuman) se
 ## Wave Breakdown
 
 ### Wave 1: Flexible Category Matching & Instant Receipt Feedback
-- [ ] **Task 1.1: Pencocokan Kategori Cerdas (*Fuzzy & Alias Matching*)**
+- [x] **Task 1.1: Pencocokan Kategori Cerdas (*Fuzzy & Alias Matching*)**
   - Di `src/services/Budget.js`:
     - Perbarui fungsi `getBudgetByCategory(category)`:
       - Cek kecocokan persis (*exact normalized match*).
       - Jika tidak ditemukan, cek kecocokan substring/alias (contoh: input `"Makanan"` atau `"Minuman"` otomatis cocok dengan `"Makanan & Minuman"`).
       - Menghindari kegagalan deteksi akibat perbedaan penulisan simbol `&` vs `dan`.
-- [ ] **Task 1.2: Umpan Balik Sisa Budget Instan pada Struk Transaksi**
+- [x] **Task 1.2: Umpan Balik Sisa Budget Instan pada Struk Transaksi**
   - Di `src/services/TelegramBot.js`:
     - Perbarui fungsi `formatTelegramTransactionReceipt`:
       - Untuk setiap transaksi `EXPENSE` yang kategorinya memiliki budget aktif:
@@ -30,25 +30,26 @@ Memastikan setiap transaksi pengeluaran (seperti pembelian makanan & minuman) se
 ---
 
 ### Wave 2: Targeted Command `/budget <kategori>` & Dictionary Alignment
-- [ ] **Task 2.1: Dukungan Parameter pada Command `/budget`**
+- [x] **Task 2.1: Dukungan Parameter pada Command `/budget`**
   - Di `src/services/BotCommands.js`:
     - Syntax: `/budget [nama_kategori]`
     - Jika argumen diberikan (misal `/budget Makanan` atau `/budget Makanan & Minuman`):
       - Tampilkan kartu detail khusus untuk kategori tersebut:
         - Limit, realisasi belanja siklus gajian aktif, persentase terpakai, sisa kuota, dan progress bar.
     - Jika tanpa argumen: tampilkan ringkasan seluruh budget aktif seperti biasa.
-- [ ] **Task 2.2: Helper Pemetaan Kata Kunci Makanan & Minuman**
+- [x] **Task 2.2: Helper Pemetaan Kata Kunci Makanan & Minuman**
   - Di `src/Category.js`:
     - Pastikan kata kunci umum kuliner (`makan`, `minum`, `kopi`, `sarapan`, `gofood`, `grabfood`, `shopeefood`, `jajan`, `lunch`, `dinner`) terhubung ke kategori resmi `Makanan & Minuman`.
 
 ---
 
 ### Wave 3: Integration Testing & Verification
-- [ ] **Task 3.1: Test Suite Lokal Node.js (`tests/instant_budget_feedback.test.js`)**
+- [x] **Task 3.1: Test Suite Lokal Node.js (`tests/instant_budget_feedback.test.js`)**
   - Uji pencocokan nama kategori fleksibel (`Makanan` ➔ `Makanan & Minuman`).
   - Uji kemunculan sisa budget pada struk transaksi bernilai kecil (misal Rp 25.000).
   - Uji command `/budget Makanan & Minuman`.
   - Uji regresi terhadap seluruh test suite (`payday_budget.test.js`, `inventory_sync.test.js`, `home_inventory_notification.test.js`).
-- [ ] **Task 3.2: Deployment & Verifikasi Apps Script**
+- [x] **Task 3.2: Deployment & Verifikasi Apps Script**
   - Unggah pembaruan ke Google Apps Script via `clasp push --force`.
   - Deploy versi baru via `clasp deploy`.
+

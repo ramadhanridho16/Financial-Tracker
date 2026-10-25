@@ -212,4 +212,23 @@ function saveNewCategory(categoryName, keywords, defaultType) {
   };
 }
 
+/**
+ * Memastikan kategori 'Makanan & Minuman' memiliki kata kunci dasar yang lengkap di Dictionary.
+ *
+ * @returns {Boolean}
+ */
+function ensureFoodCategoryKeywords() {
+  const foodKeywords = [
+    "makan", "makanan", "minum", "minuman", "kopi", "sarapan", "lunch", "dinner",
+    "gofood", "grabfood", "shopeefood", "jajan", "snack", "resto", "cafe"
+  ];
+  try {
+    saveNewCategory("Makanan & Minuman", foodKeywords.join(", "), CONFIG.TRANSACTION_TYPE.EXPENSE);
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+
 

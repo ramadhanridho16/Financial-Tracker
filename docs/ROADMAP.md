@@ -16,9 +16,9 @@ Completed
 
 [x] Payday (25th) Budget & Category Ingestion (Phase 2.2)
 
-Planned
+[x] Real-Time Instant Budget Feedback & Keyword Mapping (Phase 2.3)
 
-[ ] Real-Time Instant Budget Feedback & Keyword Mapping (Phase 2.3)
+Planned
 
 [ ] Split Transaction
 

@@ -49,3 +49,4 @@ Secara arsitektur, sistem pada Phase 2.2 sudah menghitung pemotongan budget seca
    * Memungkinkan pengguna mengecek status satu kategori saja.
 4. **Verifikasi & Sinkronisasi Dictionary:**
    * Memastikan keyword makanan & minuman populer terhubung ke `Makanan & Minuman`.
+

@@ -62,7 +62,7 @@ function initializeBotCommands() {
   registerBotCommand("/dashboard", handleDashboardCommand, "Alias ringkasan", "/dashboard");
   registerBotCommand("/ping", handlePingCommand, "Uji koneksi & status webhook bot", "/ping");
   registerBotCommand("/kategori", handleKategoriCommand, "Melihat daftar kategori transaksi yang tersedia", "/kategori");
-  registerBotCommand("/budget", handleBudgetCommand, "Melihat limit dan peringatan budget bulanan", "/budget");
+  registerBotCommand("/budget", handleBudgetCommand, "Melihat limit dan pemakaian budget siklus gajian", "/budget [kategori]");
   registerBotCommand("/terakhir", handleRecentTransactionsCommand, "Melihat 5 transaksi terakhir", "/terakhir");
   registerBotCommand("/utang", handleLoansCommand, "Melihat daftar pinjaman dan kewajiban cicilan", "/utang");
   registerBotCommand("/kredit", handleKreditCommand, "Mencatat pinjaman baru via mode percakapan berpemandu", "/kredit");
@@ -231,13 +231,36 @@ function handleKategoriCommand() {
 
 /**
  * Handler Perintah: /budget
+ * Syntax: /budget [kategori]
  *
+ * @param {String|Number} [chatId]
+ * @param {String} [args]
  * @returns {String}
  */
-function handleBudgetCommand() {
+function handleBudgetCommand(chatId, args) {
   const budgets = getBudgets();
   if (budgets.length === 0) {
     return "🎯 *Budget Siklus Gajian:*\nBelum ada anggaran (budget) yang diatur.\n\n💡 _Gunakan perintah:_ `/setbudget <kategori> <nominal>` _untuk mulai membuat anggaran._";
+  }
+
+  // Jika pengguna mengecek kategori spesifik (misal: /budget Makanan & Minuman atau /budget makanan)
+  if (args && args.trim()) {
+    const targetCategory = args.trim();
+    const status = getBudgetUsageStatus(targetCategory);
+    if (!status) {
+      return "ℹ️ Tidak ditemukan anggaran aktif untuk kategori *" + targetCategory + "*.\n\nKetik `/budget` untuk melihat seluruh anggaran yang ada.";
+    }
+
+    return "🎯 *Status Anggaran: " + status.category + "*\n" +
+      "📅 *Periode:* `" + status.periodLabel + "`\n" +
+      "----------------------------------------\n" +
+      "• *Kemajuan:* " + status.progressBar + "\n" +
+      "• *Plafon Limit:* " + formatCurrency(status.limit) + "\n" +
+      "• *Realisasi Belanja:* *" + formatCurrency(status.spent) + "*\n" +
+      "• *Sisa Kuota:* *" + (status.remaining >= 0 ? formatCurrency(status.remaining) : "-" + formatCurrency(Math.abs(status.remaining))) + "*\n" +
+      "• *Status:* " + status.badge + "\n" +
+      "----------------------------------------\n" +
+      "💡 _Siklus anggaran diperbarui otomatis setiap tanggal 25 (Hari Gajian)._";
   }
 
   const period = getPaydayPeriod();
