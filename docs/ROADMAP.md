@@ -22,6 +22,8 @@ Completed
 
 Planned
 
+[ ] Telegram Bot Menu & Interactive Command Guide (Phase 4.4)
+
 [ ] Split Transaction
 
 [ ] OCR
