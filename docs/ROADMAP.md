@@ -20,9 +20,9 @@ Completed
 
 [x] Transaction Correction & Discrepancy Reconciliation (Phase 3.1)
 
-Planned
+[x] Telegram Bot Menu & Interactive Command Guide (Phase 4.4)
 
-[ ] Telegram Bot Menu & Interactive Command Guide (Phase 4.4)
+Planned
 
 [ ] Split Transaction
 

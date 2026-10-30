@@ -28,6 +28,6 @@
 - [x] **Phase 2.2: Telegram Category Ingestion & Payday (25th) Budget Cycle**: Menambah kategori via Telegram, mengatur budget nominal per kategori, dan otomatisasi rollover serta rekap anggaran bulanan setiap tanggal 25 (hari gajian).
 - [x] **Phase 2.3: Real-Time Instant Budget Feedback & Keyword Mapping**: Umpan balik sisa budget instan pada struk transaksi, pencocokan kategori fleksibel (misal Makanan & Minuman), dan command /budget per kategori.
 - [x] **Phase 3.1: Transaction Correction & Discrepancy Reconciliation**: Pembatalan instan (/undo), koreksi field transaksi (/koreksi), penghapusan (/hapustransaksi), dan rekonsiliasi selisih dana belum tercatat (/sesuaikan).
-- [ ] **Phase 4.4: Telegram Bot Menu & Interactive Command Guide**: Menu native Telegram bot (`setMyCommands`), tombol menu cepat, panduan perintah terstruktur dan contoh cara penggunaan.
+- [x] **Phase 4.4: Telegram Bot Menu & Interactive Command Guide**: Menu native Telegram bot (`setMyCommands`), tombol menu cepat, panduan perintah terstruktur dan contoh cara penggunaan.
 - [ ] **Phase 4.5: AI Categorization Engine**: Peningkatan akurasi klasifikasi kategori menggunakan Gemini API untuk kalimat ambigu di luar kamus.
 

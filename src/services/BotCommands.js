@@ -55,7 +55,8 @@ function initializeBotCommands() {
 
   registerBotCommand("/bantuan", handleHelpCommand, "Melihat panduan & seluruh menu perintah", "/bantuan");
   registerBotCommand("/help", handleHelpCommand, "Alias bantuan", "/help");
-  registerBotCommand("/start", handleHelpCommand, "Memulai bot & panduan", "/start");
+  registerBotCommand("/start", handleStartCommand, "Memulai bot & panduan", "/start");
+  registerBotCommand("/menu", handleMenuCommand, "Menu navigasi cepat & tombol perintah", "/menu");
   registerBotCommand("/saldo", handleSaldoCommand, "Mengecek sisa saldo seluruh wallet aktif", "/saldo");
   registerBotCommand("/wallet", handleSaldoCommand, "Alias saldo", "/wallet");
   registerBotCommand("/ringkasan", handleDashboardCommand, "Ringkasan keuangan bulanan & dashboard", "/ringkasan");
@@ -82,6 +83,7 @@ function initializeBotCommands() {
   registerBotCommand("/adjust", handleDiscrepancyAdjustmentCommand, "Alias sesuaikan saldo", "/adjust <wallet> <nominal_nyata> [alasan]");
   registerBotCommand("/opname", handleDiscrepancyAdjustmentCommand, "Alias sesuaikan saldo kas", "/opname <wallet> <nominal_nyata> [alasan]");
   registerBotCommand("/batal", handleCancelWizardCommand, "Membatalkan sesi percakapan aktif atau transaksi", "/batal");
+  registerBotCommand("/syncmenu", handleSyncMenuCommand, "Sinkronisasi menu tombol bot ke Telegram API", "/syncmenu");
 }
 
 /**
@@ -125,33 +127,193 @@ function dispatchBotCommand(text, chatId, update) {
 }
 
 /**
+ * Menghasilkan daftar perintah default bot untuk didaftarkan ke menu native Telegram (/setMyCommands).
+ * Mematuhi batasan Telegram: nama command max 32 char (hanya a-z, 0-9, _) dan description max 256 char.
+ *
+ * @returns {Array<{command: string, description: string}>}
+ */
+function getTelegramDefaultCommandsList() {
+  return [
+    { command: "menu", description: "Navigasi cepat & tombol perintah utama" },
+    { command: "saldo", description: "Cek sisa saldo seluruh rekening & kas" },
+    { command: "ringkasan", description: "Dashboard keuangan & konsumsi bulanan" },
+    { command: "budget", description: "Pantau kuota & limit budget siklus gajian" },
+    { command: "terakhir", description: "Lihat 5 transaksi terakhir" },
+    { command: "undo", description: "Batalkan/hapus 1 transaksi terakhir" },
+    { command: "koreksi", description: "Koreksi salah nominal, kategori, atau wallet" },
+    { command: "sesuaikan", description: "Sesuaikan saldo fisik & catat selisih dana" },
+    { command: "hapustransaksi", description: "Hapus transaksi tertentu dari riwayat" },
+    { command: "kategori", description: "Daftar kategori transaksi yang tersedia" },
+    { command: "tambahkategori", description: "Tambah kategori baru & kata kunci deteksi" },
+    { command: "setbudget", description: "Atur limit nominal budget bulanan" },
+    { command: "hapusbudget", description: "Hapus/nonaktifkan budget kategori" },
+    { command: "tambahwallet", description: "Tambah rekening atau e-wallet baru" },
+    { command: "setwallet", description: "Cocokkan saldo wallet & deteksi selisih" },
+    { command: "kalender", description: "Jadwal jatuh tempo cicilan bulanan" },
+    { command: "utang", description: "Daftar pinjaman & kewajiban cicilan" },
+    { command: "kredit", description: "Catat pinjaman baru (percakapan interaktif)" },
+    { command: "batal", description: "Batalkan sesi percakapan atau transaksi aktif" },
+    { command: "bantuan", description: "Panduan lengkap & seluruh contoh perintah" },
+    { command: "ping", description: "Uji koneksi & webhook bot" }
+  ];
+}
+
+/**
+ * Menyinkronkan daftar perintah bot ke server Telegram Bot API (setMyCommands).
+ *
+ * @returns {Object} Hasil API Telegram
+ */
+function syncTelegramBotCommands() {
+  const commands = getTelegramDefaultCommandsList();
+  return setTelegramMyCommands(commands);
+}
+
+/**
+ * Handler Perintah: /syncmenu
+ * Menyinkronkan menu perintah secara langsung dari chat Telegram.
+ *
+ * @param {String|Number} chatId
+ * @returns {String}
+ */
+function handleSyncMenuCommand(chatId) {
+  try {
+    const res = syncTelegramBotCommands();
+    if (res && res.ok) {
+      return "✅ *Menu Telegram Berhasil Disinkronkan!*\n" +
+        "Daftar perintah bot kini telah terdaftar di tombol menu `[/]` Telegram Anda.\n" +
+        "Ketik garis miring (`/`) untuk melihat daftar perintah instan.";
+    }
+    return "⚠️ *Gagal Menyinkronkan Menu Telegram:*\n" + (res ? res.description : "Tidak ada respon dari Telegram API.");
+  } catch (err) {
+    return "⚠️ *Error saat Sinkronisasi Menu:*\n" + err.message;
+  }
+}
+
+/**
+ * Handler Perintah: /start
+ *
+ * @param {String|Number} chatId
+ * @returns {String}
+ */
+function handleStartCommand(chatId) {
+  let text = "👋 *Halo! Selamat Datang di Financial Tracker Bot*\n" +
+    "Asisten pencatatan keuangan pribadi otomatis Anda terhubung langsung dengan Google Sheets.\n\n" +
+    "📝 *Cara Mencatat Transaksi Instan:*\n" +
+    "Ketik kalimat transaksi secara alami tanpa format kaku:\n" +
+    "• `Makan siang 35k bca`\n" +
+    "• `Beli bensin 50rb bri`\n" +
+    "• `Gaji bulanan 10jt mandiri`\n" +
+    "• `Transfer bca ke jago 200rb`\n" +
+    "• `Beli kopi 25rb, bayar parkir 5rb tunai`\n\n" +
+    "⚡ *Navigasi Cepat:*\n" +
+    "• `/menu` — Buka menu tombol navigasi cepat\n" +
+    "• `/saldo` — Cek sisa saldo seluruh wallet\n" +
+    "• `/budget` — Cek sisa anggaran belanja\n" +
+    "• `/undo` — Batalkan transaksi terakhir jika ada salah input\n" +
+    "• `/bantuan` — Melihat seluruh 28 perintah bot lengkap dengan cara pakainya.";
+  return text;
+}
+
+/**
+ * Handler Perintah: /menu
+ * Menampilkan ringkasan menu navigasi cepat.
+ *
+ * @param {String|Number} chatId
+ * @returns {String}
+ */
+function handleMenuCommand(chatId) {
+  let text = "🎛️ *Menu Navigasi Cepat Financial Tracker*\n" +
+    "Tekan atau klik perintah di bawah untuk menjalankan aksi cepat:\n\n" +
+    "💳 *Rekening & Kas:*\n" +
+    "• /saldo — Cek sisa saldo semua rekening\n" +
+    "• /setwallet — Cocokkan saldo rekening\n\n" +
+    "🎯 *Anggaran (Siklus Gajian):*\n" +
+    "• /budget — Pantau sisa kuota belanja\n" +
+    "• /setbudget — Atur plafon anggaran baru\n\n" +
+    "✏️ *Koreksi & Pembatalan:*\n" +
+    "• /undo — Batalkan transaksi terakhir\n" +
+    "• /koreksi — Koreksi nominal/kategori/wallet\n" +
+    "• /sesuaikan — Catat uang fisik belum terdata\n\n" +
+    "📊 *Laporan & Histori:*\n" +
+    "• /terakhir — 5 transaksi terbaru\n" +
+    "• /ringkasan — Dashboard bulanan\n\n" +
+    "🤝 *Pinjaman & Kredit:*\n" +
+    "• /utang — Daftar cicilan & utang aktif\n" +
+    "• /kalender — Jadwal jatuh tempo bulan ini\n\n" +
+    "📖 *Butuh panduan lengkap?* Ketik /bantuan";
+  return text;
+}
+
+/**
  * Handler Perintah: /bantuan atau /help
+ * Menampilkan panduan komprehensif seluruh 28 perintah yang terkelompok rapi.
  *
  * @returns {String}
  */
 function handleHelpCommand() {
   initializeBotCommands();
-  let text = "🤖 *Financial Tracker Bot — Daftar Perintah*\n\n";
-  text += "📝 *Catat Transaksi Otomatis:*\n";
-  text += "Ketik langsung transaksi dalam bahasa alami:\n";
-  text += "• `Makan siang 35k bca`\n";
-  text += "• `Beli bensin 50rb bri`\n";
-  text += "• `Gaji bulanan 10jt mandiri`\n";
-  text += "• `Transfer bca ke jago 200rb`\n\n";
-  text += "⚡ *Daftar Menu Perintah:*\n";
-
-  const printed = new Set();
-  const keys = Object.keys(BOT_COMMAND_REGISTRY).sort();
-  for (const k of keys) {
-    const item = BOT_COMMAND_REGISTRY[k];
-    if (!printed.has(item.description)) {
-      printed.add(item.description);
-      text += "• `" + item.usage + "` — " + item.description + "\n";
-    }
-  }
+  let text = "🤖 *Panduan Lengkap Financial Tracker Bot*\n\n" +
+    "Catat transaksi secara alami via chat:\n" +
+    "• `makan siang 35k bca`\n" +
+    "• `beli bensin 50rb tunai`\n" +
+    "• `transfer bca ke mandiri 500rb`\n" +
+    "• `gaji freelance 2.5jt bca`\n\n" +
+    "========================================\n" +
+    "📋 *DAFTAR SELURUH PERINTAH & CARA PAKAI*\n" +
+    "========================================\n\n" +
+    "💳 *1. Kas & Rekening (Wallets)*\n" +
+    "• `/saldo` (alias `/wallet`)\n" +
+    "   _Cek sisa saldo kas tunai, bank, & e-wallet._\n" +
+    "• `/tambahwallet <nama> [tipe] [saldo_awal]`\n" +
+    "   _Contoh:_ `/tambahwallet Jago Bank 500k`\n" +
+    "• `/setwallet <nama> <nominal>` (alias `/cocokkan`)\n" +
+    "   _Contoh:_ `/setwallet BCA 2.500.000`\n\n" +
+    "🎯 *2. Anggaran Belanja (Budget Siklus Gajian)*\n" +
+    "• `/budget [kategori]`\n" +
+    "   _Contoh:_ `/budget` atau `/budget Makanan & Minuman`\n" +
+    "• `/setbudget <kategori> <nominal> [warning%]`\n" +
+    "   _Contoh:_ `/setbudget Makanan & Minuman 1.5jt 80`\n" +
+    "• `/hapusbudget <kategori>`\n" +
+    "   _Contoh:_ `/hapusbudget Hiburan`\n\n" +
+    "🏷️ *3. Kategori Transaksi*\n" +
+    "• `/kategori`\n" +
+    "   _Melihat daftar seluruh kategori transaksi._\n" +
+    "• `/tambahkategori <nama> [keyword1, kw2]`\n" +
+    "   _Contoh:_ `/tambahkategori Kucing whiskers, meo, cat food`\n\n" +
+    "✏️ *4. Koreksi, Pembatalan & Selisih Fisik*\n" +
+    "• `/undo` (alias `/bataltransaksi`)\n" +
+    "   _Batalkan & hapus transaksi terakhir secara instan._\n" +
+    "• `/koreksi [nomor] <field> <nilai>`\n" +
+    "   _Contoh:_ `/koreksi nominal 50k`\n" +
+    "   _Contoh:_ `/koreksi wallet Mandiri`\n" +
+    "   _Contoh:_ `/koreksi 2 nominal 75k`\n" +
+    "• `/hapustransaksi <nomor>`\n" +
+    "   _Contoh:_ `/hapustransaksi 2` (hapus nomor 2 dari riwayat)\n" +
+    "• `/sesuaikan <wallet> <nominal_nyata> [alasan]` (alias `/adjust`, `/opname`)\n" +
+    "   _Contoh:_ `/sesuaikan tunai 420k lupa catat parkir & jajan`\n" +
+    "   _Contoh:_ `/sesuaikan bca 3.5jt freelance belum dicatat`\n\n" +
+    "📊 *5. Riwayat & Laporan Keuangan*\n" +
+    "• `/terakhir`\n" +
+    "   _Melihat rincian 5 transaksi terbaru._\n" +
+    "• `/ringkasan` (alias `/dashboard`)\n" +
+    "   _Dashboard keuangan, pengeluaran terbesar & KPI bulanan._\n\n" +
+    "🤝 *6. Pinjaman & Cicilan (Loans)*\n" +
+    "• `/utang`\n" +
+    "   _Daftar pinjaman aktif & sisa kewajiban._\n" +
+    "• `/kalender` (alias `/jadwal`)\n" +
+    "   _Jadwal jatuh tempo cicilan bulanan._\n" +
+    "• `/kredit`\n" +
+    "   _Pendaftaran pinjaman baru (mode interaktif)._\n" +
+    "• `/batal`\n" +
+    "   _Batalkan sesi input pinjaman aktif._\n\n" +
+    "⚙️ *7. Sistem & Menu*\n" +
+    "• `/menu` — Tampilkan menu tombol navigasi cepat\n" +
+    "• `/syncmenu` — Perbarui popup menu [/] di Telegram\n" +
+    "• `/ping` — Uji koneksi status bot";
 
   return text;
 }
+
 
 /**
  * Handler Perintah: /saldo atau /wallet

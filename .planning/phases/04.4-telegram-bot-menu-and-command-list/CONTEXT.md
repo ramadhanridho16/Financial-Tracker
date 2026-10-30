@@ -41,3 +41,4 @@ Kelompokkan perintah ke dalam kategori yang rapi:
 - 📊 **Riwayat & Laporan:** `/terakhir`, `/ringkasan`
 - 🤝 **Pinjaman & Cicilan:** `/utang`, `/kalender`, `/kredit`, `/batal`
 - ⚙️ **Sistem & Bantuan:** `/bantuan`, `/menu`, `/ping`
+

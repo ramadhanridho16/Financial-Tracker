@@ -152,3 +152,62 @@ function deleteTelegramWebhook() {
   return callTelegramApi("deleteWebhook");
 }
 
+/**
+ * Mendaftarkan daftar menu perintah bot ke Telegram (muncul di popup tombol [/] Menu).
+ *
+ * @param {Array<{command: string, description: string}>} commandsList
+ * @param {Object} [scope] - Opsional (default: default bot command scope)
+ * @param {String} [languageCode] - Opsional (misal: "id", "en")
+ * @returns {Object} Response API Telegram
+ */
+function setTelegramMyCommands(commandsList, scope, languageCode) {
+  if (!Array.isArray(commandsList)) {
+    throw new Error("commandsList harus berupa array perintah.");
+  }
+
+  // Format dan validasi sesuai standar Telegram Bot API
+  // command: 1-32 karakter, hanya huruf kecil a-z, 0-9, dan underscore _
+  // description: 1-256 karakter
+  const formattedCommands = commandsList.map(item => {
+    let cmd = String(item.command || "").trim().toLowerCase();
+    if (cmd.startsWith("/")) cmd = cmd.substring(1);
+    cmd = cmd.replace(/[^a-z0-9_]/g, "");
+
+    let desc = String(item.description || "Perintah bot").trim();
+    if (desc.length > 256) desc = desc.substring(0, 253) + "...";
+
+    return {
+      command: cmd,
+      description: desc
+    };
+  }).filter(item => item.command.length >= 1 && item.command.length <= 32);
+
+  const payload = {
+    commands: formattedCommands
+  };
+
+  if (scope) {
+    payload.scope = scope;
+  }
+  if (languageCode) {
+    payload.language_code = languageCode;
+  }
+
+  return callTelegramApi("setMyCommands", payload);
+}
+
+/**
+ * Mengambil daftar perintah yang saat ini terdaftar di Telegram.
+ *
+ * @param {Object} [scope]
+ * @param {String} [languageCode]
+ * @returns {Object}
+ */
+function getTelegramMyCommands(scope, languageCode) {
+  const payload = {};
+  if (scope) payload.scope = scope;
+  if (languageCode) payload.language_code = languageCode;
+  return callTelegramApi("getMyCommands", payload);
+}
+
+

@@ -139,6 +139,7 @@ function onOpen() {
     .addItem("Perbarui Report", "refreshReport")
     .addSeparator()
     .addItem("Pasang Webhook Telegram", "setupTelegramWebhookPrompt")
+    .addItem("Sinkronisasi Menu Perintah Telegram", "syncTelegramMenuPrompt")
     .addItem("Cek Status Webhook Telegram", "showTelegramWebhookStatus")
     .addItem("Uji Koneksi Bot Telegram", "testTelegramBotConnection")
     .addItem("Simulasi Pesan Teks Telegram", "testTelegramMessageSimulation")
@@ -537,9 +538,31 @@ function setupTelegramWebhookPrompt() {
 
   const result = setTelegramWebhook(url);
   if (result.ok) {
-    ui.alert("Berhasil!", "Webhook Telegram berhasil dipasang ke:\n" + url, ui.ButtonSet.OK);
+    try {
+      syncTelegramBotCommands();
+    } catch (e) {
+      Logger.log("Info: Sinkronisasi menu bot otomatis terlewat: " + e.message);
+    }
+    ui.alert("Berhasil!", "Webhook Telegram & Menu Perintah berhasil dipasang ke:\n" + url, ui.ButtonSet.OK);
   } else {
     ui.alert("Gagal!", "Error: " + result.description, ui.ButtonSet.OK);
+  }
+}
+
+/**
+ * Menyinkronkan daftar perintah bot ke Telegram API secara manual via menu spreadsheet.
+ */
+function syncTelegramMenuPrompt() {
+  const ui = SpreadsheetApp.getUi();
+  try {
+    const res = syncTelegramBotCommands();
+    if (res && res.ok) {
+      ui.alert("Berhasil!", "Daftar perintah bot (setMyCommands) berhasil diperbarui di Telegram.\nPengguna kini dapat melihat menu otomatis saat mengetik '/' di Telegram.", ui.ButtonSet.OK);
+    } else {
+      ui.alert("Gagal!", "Telegram API Error: " + (res ? res.description : "Tidak ada respon"), ui.ButtonSet.OK);
+    }
+  } catch (err) {
+    ui.alert("Error!", err.message, ui.ButtonSet.OK);
   }
 }
 
