@@ -27,5 +27,6 @@
 - [x] **Phase 2.1: Wallet Management & Balance Reconciliation**: Menambah/mengubah saldo wallet via bot, auto-entry pemasukan/pengeluaran selisih, dan algoritma deteksi uang hilang (biaya admin, parkir, transaksi rekursif).
 - [x] **Phase 2.2: Telegram Category Ingestion & Payday (25th) Budget Cycle**: Menambah kategori via Telegram, mengatur budget nominal per kategori, dan otomatisasi rollover serta rekap anggaran bulanan setiap tanggal 25 (hari gajian).
 - [x] **Phase 2.3: Real-Time Instant Budget Feedback & Keyword Mapping**: Umpan balik sisa budget instan pada struk transaksi, pencocokan kategori fleksibel (misal Makanan & Minuman), dan command /budget per kategori.
+- [ ] **Phase 3.1: Transaction Correction & Discrepancy Reconciliation**: Pembatalan instan (/undo), koreksi field transaksi (/koreksi), penghapusan (/hapustransaksi), dan rekonsiliasi selisih dana belum tercatat (/sesuaikan).
 - [ ] **Phase 4.4: AI Categorization Engine**: Peningkatan akurasi klasifikasi kategori menggunakan Gemini API untuk kalimat ambigu di luar kamus.
 

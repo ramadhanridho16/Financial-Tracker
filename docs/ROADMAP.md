@@ -20,6 +20,8 @@ Completed
 
 Planned
 
+[ ] Transaction Correction & Discrepancy Reconciliation (Phase 3.1)
+
 [ ] Split Transaction
 
 [ ] OCR
