@@ -18,9 +18,9 @@ Completed
 
 [x] Real-Time Instant Budget Feedback & Keyword Mapping (Phase 2.3)
 
-Planned
+[x] Transaction Correction & Discrepancy Reconciliation (Phase 3.1)
 
-[ ] Transaction Correction & Discrepancy Reconciliation (Phase 3.1)
+Planned
 
 [ ] Split Transaction
 

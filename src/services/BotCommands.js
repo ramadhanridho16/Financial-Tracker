@@ -74,7 +74,14 @@ function initializeBotCommands() {
   registerBotCommand("/tambahwallet", handleAddWalletCommand, "Menambah rekening/wallet baru", "/tambahwallet <nama> [tipe] [saldo_awal]");
   registerBotCommand("/setwallet", handleReconcileWalletCommand, "Mencocokkan saldo wallet & deteksi selisih", "/setwallet <nama> <nominal>");
   registerBotCommand("/cocokkan", handleReconcileWalletCommand, "Alias setwallet", "/cocokkan <nama> <nominal>");
-  registerBotCommand("/batal", handleCancelWizardCommand, "Membatalkan sesi percakapan aktif", "/batal");
+  registerBotCommand("/undo", handleUndoCommand, "Membatalkan/menghapus 1 transaksi terakhir", "/undo");
+  registerBotCommand("/bataltransaksi", handleUndoCommand, "Alias undo transaksi terakhir", "/bataltransaksi");
+  registerBotCommand("/koreksi", handleCorrectionCommand, "Mengoreksi kesalahan input transaksi", "/koreksi [nomor] <field> <nilai>");
+  registerBotCommand("/hapustransaksi", handleDeleteRecentTransactionCommand, "Menghapus transaksi tertentu dari riwayat", "/hapustransaksi <nomor>");
+  registerBotCommand("/sesuaikan", handleDiscrepancyAdjustmentCommand, "Menyesuaikan saldo fisik & catat selisih dana", "/sesuaikan <wallet> <nominal_nyata> [alasan]");
+  registerBotCommand("/adjust", handleDiscrepancyAdjustmentCommand, "Alias sesuaikan saldo", "/adjust <wallet> <nominal_nyata> [alasan]");
+  registerBotCommand("/opname", handleDiscrepancyAdjustmentCommand, "Alias sesuaikan saldo kas", "/opname <wallet> <nominal_nyata> [alasan]");
+  registerBotCommand("/batal", handleCancelWizardCommand, "Membatalkan sesi percakapan aktif atau transaksi", "/batal");
 }
 
 /**
@@ -549,8 +556,11 @@ function handleCalendarCommand(chatId, args) {
  * @returns {String}
  */
 function handleCancelWizardCommand(chatId) {
-  clearLoanWizardState(chatId);
-  return "❌ *Sesi Dibatalkan*\nTidak ada data yang disimpan.";
+  if (typeof isLoanWizardActive === "function" && isLoanWizardActive(chatId)) {
+    clearLoanWizardState(chatId);
+    return "❌ *Sesi Dibatalkan*\nSesi pendaftaran kredit telah dibatalkan.";
+  }
+  return handleUndoCommand(chatId);
 }
 
 /**
@@ -681,6 +691,248 @@ function handleReconcileWalletCommand(chatId, args) {
     return "⚠️ *Gagal Mencocokkan Saldo:*\n" + err.message;
   }
 }
+
+/**
+ * Handler Perintah: /undo atau /bataltransaksi
+ * Membatalkan/menghapus 1 transaksi terakhir yang baru saja diinput.
+ *
+ * @param {String|Number} chatId
+ * @returns {String}
+ */
+function handleUndoCommand(chatId) {
+  try {
+    const result = undoLastTransaction();
+    const t = result.transaction;
+    const dateStr = t.date instanceof Date ? Utilities.formatDate(t.date, "Asia/Jakarta", "dd/MM/yyyy") : String(t.date || "-");
+
+    let reply = "🗑️ *Transaksi Terakhir Berhasil Dibatalkan!*\n" +
+      "----------------------------------------\n" +
+      "• *Tanggal:* " + dateStr + "\n" +
+      "• *Jenis:* " + t.transactionType + "\n" +
+      "• *Nominal:* *" + formatCurrency(t.amount) + "*\n" +
+      "• *Kategori:* " + (t.category || "-") + "\n" +
+      "• *Keterangan:* " + (t.description || "-") + "\n" +
+      "• *Wallet:* " + t.walletName + (t.targetWalletName ? " ➔ " + t.targetWalletName : "") + "\n" +
+      "----------------------------------------\n" +
+      "💳 *Sisa Saldo " + result.walletName + " Terkini:* *" + formatCurrency(result.currentBalance) + "*\n" +
+      "📊 _Saldo wallet & pemakaian budget telah otomatis dipulihkan._";
+
+    return reply;
+  } catch (err) {
+    return "⚠️ *Gagal Membatalkan Transaksi:*\n" + err.message;
+  }
+}
+
+/**
+ * Handler Perintah: /hapustransaksi <nomor>
+ *
+ * @param {String|Number} chatId
+ * @param {String} args
+ * @returns {String}
+ */
+function handleDeleteRecentTransactionCommand(chatId, args) {
+  if (!args || !args.trim()) {
+    return "⚠️ *Format Perintah:*\n" +
+      "Gunakan `/hapustransaksi <nomor>` (nomor 1 s/d 5 sesuai daftar `/terakhir`).\n\n" +
+      "Ketik `/terakhir` untuk melihat daftar nomor transaksi.";
+  }
+
+  const num = parseInt(args.trim(), 10);
+  if (isNaN(num) || num < 1) {
+    return "⚠️ Nomor transaksi tidak valid. Masukkan angka (misal: `/hapustransaksi 1`).";
+  }
+
+  try {
+    const result = deleteTransactionByRecentIndex(num);
+    const t = result.transaction;
+    const dateStr = t.date instanceof Date ? Utilities.formatDate(t.date, "Asia/Jakarta", "dd/MM/yyyy") : String(t.date || "-");
+
+    return "🗑️ *Transaksi #" + num + " Berhasil Dihapus!*\n" +
+      "----------------------------------------\n" +
+      "• *Tanggal:* " + dateStr + "\n" +
+      "• *Jenis:* " + t.transactionType + "\n" +
+      "• *Nominal:* *" + formatCurrency(t.amount) + "*\n" +
+      "• *Kategori:* " + (t.category || "-") + "\n" +
+      "• *Keterangan:* " + (t.description || "-") + "\n" +
+      "• *Wallet:* " + t.walletName + "\n" +
+      "----------------------------------------\n" +
+      "💳 *Sisa Saldo " + result.walletName + " Terkini:* *" + formatCurrency(result.currentBalance) + "*\n" +
+      "📊 _Saldo wallet & ringkasan telah diselaraskan._";
+  } catch (err) {
+    return "⚠️ *Gagal Menghapus Transaksi:*\n" + err.message;
+  }
+}
+
+/**
+ * Handler Perintah: /koreksi
+ * Format:
+ * • /koreksi nominal <nominal_baru> (mengubah transaksi terakhir)
+ * • /koreksi wallet <wallet_baru>
+ * • /koreksi kategori <kategori_baru>
+ * • /koreksi keterangan <keterangan_baru>
+ * • /koreksi <nomor> <field> <nilai_baru> (misal: /koreksi 2 nominal 50k)
+ *
+ * @param {String|Number} chatId
+ * @param {String} args
+ * @returns {String}
+ */
+function handleCorrectionCommand(chatId, args) {
+  if (!args || !args.trim()) {
+    const all = getTransactions();
+    let guide = "🛠️ *Panduan Koreksi Transaksi:*\n\n";
+
+    if (all.length > 0) {
+      const recent = all.slice(-3).reverse();
+      guide += "*3 Transaksi Terakhir:*\n";
+      recent.forEach((t, i) => {
+        const dateStr = t.date instanceof Date ? Utilities.formatDate(t.date, "Asia/Jakarta", "dd/MM/yyyy") : String(t.date || "-");
+        guide += "*" + (i + 1) + ".* " + dateStr + " - *" + formatCurrency(t.amount) + "* [" + (t.category || "-") + "] via *" + (t.walletName || "-") + "*\n" +
+          "   _Ket:_ " + (t.description || "-") + "\n";
+      });
+      guide += "\n";
+    }
+
+    guide += "*Cara Melakukan Koreksi Cepat:*\n" +
+      "• `/undo` — Batalkan/hapus transaksi terakhir (#1)\n" +
+      "• `/koreksi nominal <nominal_baru>` — Ubah nominal (Contoh: `/koreksi nominal 50k`)\n" +
+      "• `/koreksi wallet <wallet_baru>` — Pindahkan wallet (Contoh: `/koreksi wallet Mandiri`)\n" +
+      "• `/koreksi kategori <kategori_baru>` — Ubah kategori (Contoh: `/koreksi kategori Belanja`)\n" +
+      "• `/koreksi keterangan <teks>` — Ubah deskripsi (Contoh: `/koreksi keterangan makan bakso`)\n" +
+      "• `/koreksi 2 nominal 30k` — Koreksi transaksi nomor 2\n" +
+      "• `/hapustransaksi <nomor>` — Hapus transaksi nomor tertentu\n" +
+      "• `/sesuaikan <wallet> <nominal_nyata> [alasan]` — Sesuaikan selisih uang fisik";
+
+    return guide;
+  }
+
+  const parts = args.trim().split(/\s+/);
+  let targetIndex = 1;
+  let field = "";
+  let newValue = "";
+
+  if (!isNaN(parseInt(parts[0], 10)) && parts.length >= 3) {
+    targetIndex = parseInt(parts[0], 10);
+    field = parts[1];
+    newValue = parts.slice(2).join(" ");
+  } else if (parts.length >= 2) {
+    targetIndex = 1;
+    field = parts[0];
+    newValue = parts.slice(1).join(" ");
+  } else {
+    return "⚠️ Format tidak lengkap.\nContoh: `/koreksi nominal 50k` atau `/koreksi 2 wallet BCA`\nKetik `/koreksi` untuk melihat panduan lengkap.";
+  }
+
+  try {
+    const result = updateTransactionField(targetIndex, field, newValue);
+    const oldT = result.oldTransaction;
+    const newT = result.newTransaction;
+
+    let reply = "✏️ *Koreksi Transaksi Berhasil!* (Transaksi #" + result.recentIndex + ")\n" +
+      "----------------------------------------\n";
+
+    if (result.fieldName === "nominal" || result.fieldName === "amount" || result.fieldName === "jumlah") {
+      reply += "• *Nominal Lama:* " + formatCurrency(oldT.amount) + "\n" +
+        "• *Nominal Baru:* *" + formatCurrency(newT.amount) + "*\n";
+    } else if (result.fieldName === "wallet" || result.fieldName === "rekening" || result.fieldName === "dompet") {
+      reply += "• *Wallet Lama:* " + oldT.walletName + "\n" +
+        "• *Wallet Baru:* *" + newT.walletName + "*\n";
+    } else if (result.fieldName === "kategori" || result.fieldName === "category") {
+      reply += "• *Kategori Lama:* " + oldT.category + "\n" +
+        "• *Kategori Baru:* *" + newT.category + "*\n";
+    } else {
+      reply += "• *Keterangan Lama:* " + (oldT.description || "-") + "\n" +
+        "• *Keterangan Baru:* *" + (newT.description || "-") + "*\n";
+    }
+
+    reply += "----------------------------------------\n" +
+      "• *Rincian Lengkap:* " + newT.transactionType + " *" + formatCurrency(newT.amount) + "* [" + newT.category + "] via *" + newT.walletName + "*\n" +
+      "📊 _Saldo seluruh wallet dan budget telah otomatis diselaraskan._";
+
+    return reply;
+  } catch (err) {
+    return "⚠️ *Gagal Mengoreksi Transaksi:*\n" + err.message;
+  }
+}
+
+/**
+ * Handler Perintah: /sesuaikan (alias: /adjust, /opname)
+ * Mencocokkan saldo fisik dengan saldo sistem dan mencatat selisih dana belum tercatat.
+ * Syntax: /sesuaikan <wallet> <nominal_fisik> [alasan/catatan]
+ *
+ * @param {String|Number} chatId
+ * @param {String} args
+ * @returns {String}
+ */
+function handleDiscrepancyAdjustmentCommand(chatId, args) {
+  if (!args || !args.trim()) {
+    return "⚖️ *Panduan Penyesuaian Selisih Saldo / Dana Belum Tercatat:*\n" +
+      "Gunakan format: `/sesuaikan <wallet> <saldo_fisik> [alasan]`\n\n" +
+      "*Contoh:*\n" +
+      "• `/sesuaikan bca 1.750.000 dana freelance belum tercatat`\n" +
+      "• `/sesuaikan tunai 120k lupa catat parkir dan jajan`\n\n" +
+      "💡 _Sistem akan otomatis mencatat selisihnya sebagai transaksi penyesuaian dengan catatan yang Anda berikan._";
+  }
+
+  const parts = args.trim().split(/\s+/);
+  if (parts.length < 2) {
+    return "⚠️ Format kurang lengkap. Masukkan minimal nama wallet dan saldo fisik sebenarnya.\nContoh: `/sesuaikan bca 1.500.000`";
+  }
+
+  const walletName = parts[0];
+  const rawNominal = parts[1];
+  const customReason = parts.slice(2).join(" ").trim();
+
+  const normalizedNominal = normalizeTransactionInput(rawNominal);
+  const targetAmount = parseAmount(normalizedNominal);
+
+  if (targetAmount === null || targetAmount === undefined || isNaN(targetAmount) || targetAmount < 0) {
+    return "⚠️ Nominal saldo fisik `" + rawNominal + "` tidak valid. Gunakan angka yang jelas (Contoh: `150k`, `1.500.000`).";
+  }
+
+  try {
+    const note = customReason ? customReason : "Penyesuaian saldo fisik";
+    const result = reconcileWalletBalance(walletName, targetAmount, note);
+
+    if (result.status === "equal") {
+      return "👌 *Saldo Sudah Cocok!*\nSaldo *" + result.walletName + "* saat ini sudah tepat *" + formatCurrency(result.balance) + "*. Tidak ada selisih yang perlu disesuaikan.";
+    }
+
+    let reply = "";
+    if (result.status === "surplus") {
+      reply += "📈 *Penyesuaian Saldo Masuk (Dana Belum Tercatat)*\n" +
+        "--------------------------------------------------\n" +
+        "• *Wallet:* `" + result.walletName + "`\n" +
+        "• *Saldo Tercatat Sebelumnya:* " + formatCurrency(result.previousBalance) + "\n" +
+        "• *Saldo Nyata (Fisik):* *" + formatCurrency(result.newBalance) + "*\n" +
+        "• *Dana Tambahan:* +" + formatCurrency(result.absDelta) + "\n" +
+        (customReason ? "• *Alasan/Catatan:* _" + customReason + "_\n" : "") +
+        "--------------------------------------------------\n" +
+        "✅ _Selisih telah otomatis dicatat sebagai Pemasukan (Penyesuaian Saldo)._";
+    } else {
+      reply += "📉 *Penyesuaian Saldo Keluar (Pengeluaran Terlewat)*\n" +
+        "--------------------------------------------------\n" +
+        "• *Wallet:* `" + result.walletName + "`\n" +
+        "• *Saldo Tercatat Sebelumnya:* " + formatCurrency(result.previousBalance) + "\n" +
+        "• *Saldo Nyata (Fisik):* *" + formatCurrency(result.newBalance) + "*\n" +
+        "• *Selisih Pengeluaran:* -" + formatCurrency(result.absDelta) + "\n" +
+        (customReason ? "• *Alasan/Catatan:* _" + customReason + "_\n" : "") +
+        "--------------------------------------------------\n" +
+        "⚠️ _Selisih telah otomatis dicatat sebagai Pengeluaran (Penyesuaian Saldo)._\n\n";
+
+      if (result.leakDetections && result.leakDetections.length > 0) {
+        reply += "🔍 *Analisis Dugaan Pengeluaran / Uang Hilang:*\n";
+        result.leakDetections.forEach(d => {
+          reply += "• " + d + "\n";
+        });
+      }
+    }
+
+    return reply;
+  } catch (err) {
+    return "⚠️ *Gagal Menyesuaikan Saldo:*\n" + err.message;
+  }
+}
+
 
 
 
