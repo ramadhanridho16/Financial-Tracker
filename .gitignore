@@ -1,14 +1,25 @@
-# clasp: menyimpan ID project Apps Script lokal
-.clasp.json
+# ==========================================================
+# Git Ignore Configuration - Financial Tracker
+# Melindungi token, kredensial, dan data sensitif dari GitHub
+# ==========================================================
 
-# Environment dan secret lokal
+# 1. Environment & Secrets (Lokal Pribadi)
 .env
 .env.*
-!.env.example
+.env.local
+.env.*.local
+*.env
 secrets.*
 *.secret
 
-# OAuth / service-account credentials dan token
+# KECUALIKAN template publik agar tetap bisa di-upload ke GitHub:
+!.env.example
+
+# 2. Clasp & Apps Script Project ID
+.clasp.json
+.claspignore
+
+# 3. OAuth, Service Account Credentials & Token Files
 credentials.json
 credential*.json
 client_secret*.json
@@ -19,17 +30,28 @@ token*.json
 *.key
 *.p12
 
-# Data/ekspor pribadi
+# 4. Data Pribadi, Backup & Ekspor
 data/
 exports/
 backups/
 attachments/
 *.csv
 *.xlsx
+*.pdf
 
-# Log dan file sistem/editor
+# 5. Node & Testing Artifacts
+node_modules/
+coverage/
+*.lcov
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# 6. Log & File Sistem / Editor
 *.log
 .DS_Store
 Thumbs.db
 .vscode/
 .idea/
+*.sublime-project
+*.sublime-workspace

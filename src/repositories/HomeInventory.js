@@ -5,12 +5,33 @@
  */
 
 /**
+ * Mengambil ID Spreadsheet Home Inventory aktif.
+ * Memprioritaskan ScriptProperties, lalu sheet Settings, lalu CONFIG.
+ *
+ * @returns {String}
+ */
+function getHomeInventorySpreadsheetId() {
+  const propertyId = PropertiesService.getScriptProperties()
+    .getProperty("HOME_INVENTORY_SPREADSHEET_ID");
+  if (propertyId) return propertyId;
+
+  const settingId = getSetting("Home Inventory Spreadsheet ID");
+  if (settingId) return settingId;
+
+  return CONFIG.HOME_INVENTORY.SPREADSHEET_ID || "";
+}
+
+/**
  * Mengambil spreadsheet Home Inventory yang terhubung.
  *
  * @returns {GoogleAppsScript.Spreadsheet.Spreadsheet}
  */
 function getHomeInventorySpreadsheet() {
-  return SpreadsheetApp.openById(CONFIG.HOME_INVENTORY.SPREADSHEET_ID);
+  const id = getHomeInventorySpreadsheetId();
+  if (!id) {
+    throw new Error("ID Spreadsheet Home Inventory belum dikonfigurasi. Atur di Script Properties atau sheet Settings.");
+  }
+  return SpreadsheetApp.openById(id);
 }
 
 /**

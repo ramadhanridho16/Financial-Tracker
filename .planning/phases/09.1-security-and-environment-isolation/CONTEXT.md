@@ -26,3 +26,4 @@ Karena Google Apps Script tidak membaca file `.env` di server Google (GAS berjal
    - `.clasp.json` di-untrack dari git history lokal tanpa menghapus file fisiknya (`git rm --cached .clasp.json`).
 4. **Hardening `.gitignore`:**
    - Memastikan semua variasi `.env`, `.env.local`, `.env.*.local`, `.clasp.json`, dan file credential/kunci privat terlindungi sepenuhnya.
+

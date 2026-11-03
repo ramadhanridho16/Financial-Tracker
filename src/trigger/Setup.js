@@ -138,6 +138,7 @@ function onOpen() {
     .addItem("Perbarui Dashboard", "refreshDashboard")
     .addItem("Perbarui Report", "refreshReport")
     .addSeparator()
+    .addItem("Atur Token Rahasia (Script Properties)", "setupSecretPropertiesPrompt")
     .addItem("Pasang Webhook Telegram", "setupTelegramWebhookPrompt")
     .addItem("Sinkronisasi Menu Perintah Telegram", "syncTelegramMenuPrompt")
     .addItem("Cek Status Webhook Telegram", "showTelegramWebhookStatus")
@@ -612,4 +613,29 @@ function testTelegramMessageSimulation() {
   const sim = simulateTelegramMessage("Makan siang 25k bca");
   ui.alert("Simulasi Transaksi Selesai", "Status: " + JSON.stringify(sim), ui.ButtonSet.OK);
 }
+
+/**
+ * Meminta pengguna memasukkan token atau konfigurasi rahasia untuk disimpan ke Script Properties.
+ * Kredensial tidak tersimpan di kode sumber sehingga aman saat di-upload ke GitHub.
+ */
+function setupSecretPropertiesPrompt() {
+  const ui = SpreadsheetApp.getUi();
+  const prompt = ui.prompt(
+    "Atur Token Telegram Bot",
+    "Masukkan Token Bot Telegram dari @BotFather:\n(Disimpan aman di Script Properties, tidak akan terekspos ke GitHub)",
+    ui.ButtonSet.OK_CANCEL
+  );
+
+  if (prompt.getSelectedButton() !== ui.Button.OK) return;
+
+  const token = prompt.getResponseText().trim();
+  if (!token) {
+    ui.alert("Batal", "Token tidak boleh kosong.", ui.ButtonSet.OK);
+    return;
+  }
+
+  PropertiesService.getScriptProperties().setProperty("TELEGRAM_BOT_TOKEN", token);
+  ui.alert("Berhasil!", "Token Telegram Bot berhasil disimpan ke Script Properties secara aman.", ui.ButtonSet.OK);
+}
+
 

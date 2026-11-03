@@ -22,9 +22,9 @@ Completed
 
 [x] Telegram Bot Menu & Interactive Command Guide (Phase 4.4)
 
-Planned
+[x] Security, Environment Isolation & Gitignore Hardening (Phase 9.1)
 
-[ ] Security, Environment Isolation & Gitignore Hardening (Phase 9.1)
+Planned
 
 [ ] Split Transaction
 

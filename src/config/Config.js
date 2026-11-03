@@ -58,8 +58,8 @@ const CONFIG = Object.freeze({
   },
 
   HOME_INVENTORY: {
-    // Spreadsheet ID diambil dari URL spreadsheet yang digunakan untuk menyimpan data inventaris rumah tangga. Pastikan untuk mengganti ID ini dengan ID spreadsheet Anda sendiri.
-    SPREADSHEET_ID: "1agLINpK-XyW-_hG30XX7-Ce_6KSw90sNK_7IFjscGRU",
+    // Spreadsheet ID dapat dikonfigurasi melalui Script Properties ('HOME_INVENTORY_SPREADSHEET_ID') atau sheet Settings
+    SPREADSHEET_ID: "",
     SHEETS: {
       MASTER_BARANG: "Master_Barang",
       PRODUCT_MASTER: "Product_Master",
@@ -164,7 +164,7 @@ const CONFIG = Object.freeze({
 
     API_URL: "https://api.telegram.org/bot",
     FILE_URL: "https://api.telegram.org/file/bot",
-    BOT_TOKEN: "8627740740:AAEa2UbSqUqdGJI-msg9nW6qg9-V9pWzxu8",
+    BOT_TOKEN: "", // Token rahasia: simpan di Script Properties ('TELEGRAM_BOT_TOKEN') atau sheet Settings
     DEFAULT_CHAT_ID: "",
     ALLOWED_USER_IDS: [],
     RECEIPTS_FOLDER_NAME: "Financial Tracker Receipts"
