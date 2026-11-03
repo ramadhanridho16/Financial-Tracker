@@ -29,5 +29,6 @@
 - [x] **Phase 2.3: Real-Time Instant Budget Feedback & Keyword Mapping**: Umpan balik sisa budget instan pada struk transaksi, pencocokan kategori fleksibel (misal Makanan & Minuman), dan command /budget per kategori.
 - [x] **Phase 3.1: Transaction Correction & Discrepancy Reconciliation**: Pembatalan instan (/undo), koreksi field transaksi (/koreksi), penghapusan (/hapustransaksi), dan rekonsiliasi selisih dana belum tercatat (/sesuaikan).
 - [x] **Phase 4.4: Telegram Bot Menu & Interactive Command Guide**: Menu native Telegram bot (`setMyCommands`), tombol menu cepat, panduan perintah terstruktur dan contoh cara penggunaan.
+- [ ] **Phase 9.1: Security, Environment Isolation & Gitignore Hardening**: Mengamankan token Telegram dari publikasi GitHub, isolasi file `.env` vs template `.env.example`, dan hardening `.gitignore`.
 - [ ] **Phase 4.5: AI Categorization Engine**: Peningkatan akurasi klasifikasi kategori menggunakan Gemini API untuk kalimat ambigu di luar kamus.
 

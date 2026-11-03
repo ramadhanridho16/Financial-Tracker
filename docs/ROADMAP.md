@@ -24,6 +24,8 @@ Completed
 
 Planned
 
+[ ] Security, Environment Isolation & Gitignore Hardening (Phase 9.1)
+
 [ ] Split Transaction
 
 [ ] OCR
